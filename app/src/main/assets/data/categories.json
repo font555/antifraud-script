@@ -1,0 +1,46 @@
+{
+  "categories": [
+    {
+      "id": "game",
+      "name": "游戏账号",
+      "desc": "低价买号 · 私下转账",
+      "glyph": "游",
+      "color": "#C0392B"
+    },
+    {
+      "id": "rebate",
+      "name": "刷单返利",
+      "desc": "点赞赚钱 · 垫付流水",
+      "glyph": "单",
+      "color": "#D98C1F"
+    },
+    {
+      "id": "service",
+      "name": "冒充客服",
+      "desc": "退款理赔 · 屏幕共享",
+      "glyph": "服",
+      "color": "#3F7FA6"
+    },
+    {
+      "id": "police",
+      "name": "冒充公检法",
+      "desc": "涉案洗钱 · 安全账户",
+      "glyph": "法",
+      "color": "#6B4C8A"
+    },
+    {
+      "id": "loan",
+      "name": "校园贷兼职",
+      "desc": "零门槛借 · 高薪兼职",
+      "glyph": "贷",
+      "color": "#4E7B3A"
+    },
+    {
+      "id": "aiface",
+      "name": "AI换脸诈骗",
+      "desc": "视频通话 · 熟人借钱",
+      "glyph": "脸",
+      "color": "#3C7A89"
+    }
+  ]
+}

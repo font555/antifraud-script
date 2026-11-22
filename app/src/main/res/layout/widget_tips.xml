@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    桌面小组件布局：标题 + 一条随机防骗贴士 + 已读/累计损失。
+    注意：RemoteViews 只支持有限控件，这里全部用系统 TextView / LinearLayout，
+    不能使用项目里的 PTextView（自定义 View 在桌面进程里无法 inflate）。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/px_panel"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <!-- 标题 -->
+    <TextView
+        android:id="@+id/tv_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="反诈书库"
+        android:textColor="@color/ink"
+        android:textSize="14sp" />
+
+    <!-- 随机防骗贴士 -->
+    <TextView
+        android:id="@+id/tv_tip"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:lineSpacingExtra="3dp"
+        android:maxLines="3"
+        android:text="今日防骗贴士加载中…"
+        android:textColor="@color/ink_secondary"
+        android:textSize="12sp" />
+
+    <!-- 本机读书战绩：已读本数 + 累计损失 -->
+    <TextView
+        android:id="@+id/tv_stats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:maxLines="1"
+        android:text="已读 0 本 · 累计损失 ¥0"
+        android:textColor="@color/ink_hint"
+        android:textSize="10sp" />
+</LinearLayout>

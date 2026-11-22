@@ -1,17 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand_blue">#1D3F6E</color>
-    <color name="brand_blue_light">#2E5A94</color>
-    <color name="warn_red">#D93025</color>
-    <color name="risk_medium">#C77700</color>
-    <color name="risk_low">#2E7D32</color>
-    <color name="bg_page">#F5F6F8</color>
-    <color name="card_white">#FFFFFF</color>
-    <color name="text_primary">#1A1A1A</color>
-    <color name="text_secondary">#666666</color>
-    <color name="text_hint">#999999</color>
-    <color name="line_grey">#E5E7EB</color>
-    <color name="chip_high_bg">#FDECEA</color>
-    <color name="chip_medium_bg">#FDF3E3</color>
-    <color name="chip_low_bg">#E9F5EC</color>
+    <!-- 像素农场风：羊皮纸 + 木色 + 番茄红，参考星露谷的暖色系 -->
+    <color name="white">#FFFFFF</color>
+    <color name="paper">#F6E7C6</color>
+    <color name="paper_deep">#EAD6AE</color>
+    <color name="paper_dark">#D9BE8C</color>
+    <color name="shelf">#A9713F</color>
+    <color name="shelf_dark">#7A4E28</color>
+    <color name="ink">#3B2A1A</color>
+    <color name="ink_secondary">#6B5233</color>
+    <color name="ink_hint">#9C8563</color>
+    <color name="card">#FFF6E0</color>
+    <color name="line">#D8BE92</color>
+    <color name="border_dark">#4A3222</color>
+
+    <!-- 主色：番茄红 -->
+    <color name="brand">#E4572E</color>
+    <color name="brand_deep">#BF3D1C</color>
+    <color name="brand_soft">#F7C9B4</color>
+    <color name="brand_shape">#33E4572E</color>
+
+    <!-- 农场点缀色 -->
+    <color name="gold">#E9B44C</color>
+    <color name="grass">#6FA84B</color>
+    <color name="sky">#7FB3D5</color>
+    <color name="plum">#8E5B8F</color>
+
+    <!-- 风险色 -->
+    <color name="warn_red">#C0392B</color>
+    <color name="risk_medium">#B5731F</color>
+    <color name="risk_low">#4E7B3A</color>
+    <color name="chip_high_bg">#F6D6CF</color>
+    <color name="chip_medium_bg">#F5E3BF</color>
+    <color name="chip_low_bg">#DCEAC8</color>
 </resources>

@@ -2,16 +2,29 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_page"
+    android:background="@color/paper"
     android:orientation="vertical">
 
-    <!-- 顶部：剧本名 / 幕进度 / 已损失 / 重来 -->
+    <!-- 像素风顶栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/brand_blue"
+        android:background="@color/border_dark"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="14dp">
+        android:paddingStart="12dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="12dp">
+
+        <com.example.antifraud.ui.PTextView
+            android:id="@+id/btn_exit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingEnd="10dp"
+            android:text="←"
+            android:textColor="@color/paper"
+            android:textSize="21sp" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -19,22 +32,21 @@
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <TextView
+            <com.example.antifraud.ui.PTextView
                 android:id="@+id/tv_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/card_white"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:textColor="@color/white"
+                android:textSize="18sp" />
 
-            <TextView
+            <com.example.antifraud.ui.PTextView
                 android:id="@+id/tv_stage"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textColor="#C9D6E8"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/paper_dark"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -44,25 +56,22 @@
             android:gravity="end"
             android:orientation="vertical">
 
-            <TextView
+            <com.example.antifraud.ui.PTextView
                 android:id="@+id/tv_loss"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/card_white"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:textColor="@color/gold"
+                android:textSize="14sp" />
 
-            <TextView
+            <com.example.antifraud.ui.PTextView
                 android:id="@+id/btn_restart"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:paddingLeft="8dp"
-                android:paddingTop="2dp"
-                android:paddingRight="8dp"
-                android:paddingBottom="2dp"
+                android:layout_marginTop="4dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="4dp"
                 android:text="@string/restart"
-                android:textColor="#C9D6E8"
+                android:textColor="@color/paper_dark"
                 android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>
@@ -71,9 +80,11 @@
         android:id="@+id/pb_stage"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="4dp"
+        android:layout_height="6dp"
         android:max="5"
-        android:progress="1" />
+        android:progress="1"
+        android:progressTint="@color/gold"
+        android:progressBackgroundTint="@color/paper_dark" />
 
     <ScrollView
         android:id="@+id/sv_messages"
@@ -90,12 +101,17 @@
             android:padding="12dp" />
     </ScrollView>
 
-    <!-- 底部：选项区（绝不显示风险颜色，避免剧透） -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:background="@color/border_dark" />
+
+    <!-- 底部选项区（绝不显示风险颜色，避免剧透） -->
     <LinearLayout
         android:id="@+id/ll_options"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/card_white"
+        android:background="@color/paper_deep"
         android:orientation="vertical"
         android:padding="12dp" />
 </LinearLayout>

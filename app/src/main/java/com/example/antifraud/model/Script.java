@@ -12,6 +12,8 @@ public class Script {
     public String id;
     public String title;
     public String scamType;
+    /** 所属分类（对应书架上的那本书），取值见 assets/data/categories.json */
+    public String category = "game";
     public String minutes;
     public String intro;
     public String startNode;

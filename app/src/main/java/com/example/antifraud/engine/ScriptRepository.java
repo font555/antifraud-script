@@ -1,8 +1,10 @@
 package com.example.antifraud.engine;
 
 import android.content.Context;
+import android.graphics.Color;
 
 import com.example.antifraud.model.CaseSource;
+import com.example.antifraud.model.Category;
 import com.example.antifraud.model.Choice;
 import com.example.antifraud.model.Script;
 import com.example.antifraud.model.StoryNode;
@@ -25,22 +27,36 @@ public class ScriptRepository {
 
     private static final String DIR = "scripts";
 
-    /** 列出 assets/scripts 下所有剧本 id（去掉 .json），自动排序。新增剧本不用改代码。 */
+    /**
+     * 列出所有剧本 id：用户自己写的（filesDir/scripts）在内置剧本（assets/scripts）之前。
+     * 新增剧本不用改代码。
+     */
     public static List<String> listScriptIds(Context ctx) {
         List<String> ids = new ArrayList<>();
+        for (String id : ScriptStore.listUserIds(ctx)) {
+            if (!ids.contains(id)) {
+                ids.add(id);
+            }
+        }
+        List<String> builtin = new ArrayList<>();
         try {
             String[] files = ctx.getAssets().list(DIR);
             if (files != null) {
                 for (String f : files) {
                     if (f.endsWith(".json")) {
-                        ids.add(f.substring(0, f.length() - 5));
+                        builtin.add(f.substring(0, f.length() - 5));
                     }
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        Collections.sort(ids);
+        Collections.sort(builtin);
+        for (String id : builtin) {
+            if (!ids.contains(id)) {
+                ids.add(id);
+            }
+        }
         return ids;
     }
 
@@ -57,6 +73,11 @@ public class ScriptRepository {
     }
 
     public static Script load(Context ctx, String id) {
+        // 用户自己写的优先
+        Script user = ScriptStore.loadUser(ctx, id);
+        if (user != null) {
+            return user;
+        }
         try {
             String json = readAsset(ctx, DIR + "/" + id + ".json");
             return parse(json);
@@ -64,6 +85,46 @@ public class ScriptRepository {
             e.printStackTrace();
             return null;
         }
+    }
+
+    /** 读取书架分类（assets/data/categories.json），并解析封面色 */
+    public static List<Category> loadCategories(Context ctx) {
+        List<Category> list = new ArrayList<>();
+        try {
+            String json = readAsset(ctx, "data/categories.json");
+            JSONArray arr = new JSONObject(json).optJSONArray("categories");
+            if (arr != null) {
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject o = arr.getJSONObject(i);
+                    Category c = new Category();
+                    c.id = o.optString("id");
+                    c.name = o.optString("name");
+                    c.desc = o.optString("desc");
+                    c.glyph = o.optString("glyph", "书");
+                    c.color = o.optString("color", "#E4572E");
+                    try {
+                        c.colorInt = Color.parseColor(c.color);
+                    } catch (Exception ignore) {
+                        c.colorInt = 0xFFE4572E;
+                    }
+                    list.add(c);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    /** 某个分类下的所有剧本 */
+    public static List<Script> loadByCategory(Context ctx, String categoryId) {
+        List<Script> result = new ArrayList<>();
+        for (Script s : loadAll(ctx)) {
+            if (categoryId == null || categoryId.equals(s.category)) {
+                result.add(s);
+            }
+        }
+        return result;
     }
 
     // ---------------- 内部实现 ----------------
@@ -80,13 +141,14 @@ public class ScriptRepository {
         return new String(out.toByteArray(), "UTF-8");
     }
 
-    private static Script parse(String json) throws Exception {
+    public static Script parse(String json) throws Exception {
         JSONObject root = new JSONObject(json);
 
         Script s = new Script();
         s.id = root.optString("id");
         s.title = root.optString("title");
         s.scamType = root.optString("scamType");
+        s.category = root.optString("category", "game");
         s.minutes = root.optString("minutes");
         s.intro = root.optString("intro");
         s.startNode = root.optString("startNode");

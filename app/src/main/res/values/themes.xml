@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:colorPrimary">@color/brand_blue</item>
-        <item name="android:colorPrimaryDark">@color/brand_blue</item>
-        <item name="android:colorAccent">@color/brand_blue</item>
-        <item name="android:statusBarColor">@color/brand_blue</item>
-        <item name="android:windowBackground">@color/bg_page</item>
+        <item name="android:colorPrimary">@color/brand</item>
+        <item name="android:colorPrimaryDark">@color/border_dark</item>
+        <item name="android:colorAccent">@color/brand</item>
+        <item name="android:statusBarColor">@color/border_dark</item>
+        <item name="android:windowBackground">@color/paper</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

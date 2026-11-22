@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 木板主体 -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/shelf" />
+            <stroke android:width="2dp" android:color="@color/shelf_dark" />
+        </shape>
+    </item>
+    <!-- 木纹高光 -->
+    <item android:left="10dp" android:right="10dp" android:top="4dp" android:bottom="14dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#33FFFFFF" />
+        </shape>
+    </item>
+</layer-list>

@@ -1,31 +1,37 @@
 package com.example.antifraud.ui;
 
 import android.app.Activity;
+import android.animation.ValueAnimator;
+import android.content.ClipData;
 import android.content.Intent;
-import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.antifraud.R;
 import com.example.antifraud.engine.PathRecorder;
 import com.example.antifraud.engine.ScriptRepository;
 import com.example.antifraud.model.Script;
 
+import java.io.File;
 import java.util.List;
 
 /**
  * 复盘页：作品的"灵魂"。逐节点输出：你选了什么 → 风险 → 为什么 → 损失金额。
- * 最后和真实案件的金额对照。
+ * 最后和真实案件的金额对照。数字会滚动增长，卡片依次滑入。
  */
-public class ReviewActivity extends Activity {
+public class ReviewActivity extends BaseActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_review);
+        Ui.insetContent(this);
 
         LinearLayout root = findViewById(R.id.ll_root);
 
@@ -37,30 +43,41 @@ public class ReviewActivity extends Activity {
         List<PathRecorder.Step> steps = rec.getSteps();
         int total = rec.totalCost();
 
-        // 1) 标题
-        TextView head = Ui.text(this, "复盘报告", 22, R.color.text_primary);
-        head.setTypeface(Typeface.DEFAULT_BOLD);
-        root.addView(head);
+        // 0) 顶部返回栏
+        LinearLayout topBar = new LinearLayout(this);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        TextView back = Ui.text(this, "←", 22, R.color.ink);
+        back.setPadding(Ui.dp(this, 4), Ui.dp(this, 6), Ui.dp(this, 14), Ui.dp(this, 6));
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+                overridePendingTransition(R.anim.page_in, R.anim.page_out);
+            }
+        });
+        topBar.addView(back);
+        topBar.addView(Ui.text(this, "复盘报告", 22, R.color.ink));
+        root.addView(topBar);
 
         if (endingTitle != null && !endingTitle.isEmpty()) {
-            TextView sub = Ui.text(this, endingTitle, 15, R.color.text_secondary);
+            TextView sub = Ui.text(this, endingTitle, 14, R.color.ink_secondary);
             sub.setPadding(0, Ui.dp(this, 8), 0, 0);
             sub.setLineSpacing(Ui.dp(this, 3), 1f);
             root.addView(sub);
         }
 
-        // 2) 结算卡：你的损失 vs 真实案件
+        // 1) 结算卡：你的损失 vs 真实案件
         LinearLayout card = Ui.card(this, 16, 12);
-        TextView big = Ui.text(this,
-                total > 0 ? "你损失 ¥" + Ui.money(total) : "你成功止损，损失 ¥0",
+        final TextView big = Ui.text(this,
+                total > 0 ? "你损失 ¥0" : "你成功止损，损失 ¥0",
                 26, total > 0 ? R.color.warn_red : R.color.risk_low);
-        big.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(big);
 
         if (script != null && script.referenceLoss > 0) {
             TextView compare = Ui.text(this,
                     script.referenceNote + "\n真实案件损失 ¥" + Ui.money(script.referenceLoss),
-                    13, R.color.text_secondary);
+                    12, R.color.ink_secondary);
             compare.setPadding(0, Ui.dp(this, 8), 0, 0);
             compare.setLineSpacing(Ui.dp(this, 4), 1f);
             card.addView(compare);
@@ -69,17 +86,37 @@ public class ReviewActivity extends Activity {
         TextView stat = Ui.text(this,
                 "共 " + steps.size() + " 步  ·  高风险 " + rec.highRiskCount()
                         + " 次  ·  及时止损 " + rec.lowRiskCount() + " 次",
-                12, R.color.text_hint);
+                10, R.color.ink_hint);
         stat.setPadding(0, Ui.dp(this, 10), 0, 0);
         card.addView(stat);
         root.addView(card);
 
-        // 3) 逐节点时间轴
-        for (PathRecorder.Step s : steps) {
-            root.addView(buildStep(s));
+        // 数字滚动
+        ValueAnimator va = ValueAnimator.ofInt(0, total);
+        va.setDuration(700);
+        va.setInterpolator(new DecelerateInterpolator());
+        va.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator a) {
+                int v = (int) a.getAnimatedValue();
+                big.setText("你损失 ¥" + Ui.money(v));
+            }
+        });
+        va.start();
+
+        // 2) 逐节点时间轴：一张张滑进来
+        for (int i = 0; i < steps.size(); i++) {
+            View item = buildStep(steps.get(i));
+            item.setAlpha(0f);
+            item.setTranslationX(Ui.dp(this, 28));
+            item.animate().alpha(1f).translationX(0f)
+                    .setDuration(220)
+                    .setStartDelay(320 + i * 70)
+                    .start();
+            root.addView(item);
         }
 
-        // 4) 底部：看来源 / 重玩另一条路
+        // 3) 底部按钮
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.VERTICAL);
         actions.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 24));
@@ -103,19 +140,39 @@ public class ReviewActivity extends Activity {
             }
         }));
 
+        // 生成分享海报：Canvas 画图后经 PosterProvider 走系统分享，不需要任何权限
+        PTextView shareBtn = new PTextView(this);
+        shareBtn.setText("生成分享海报");
+        shareBtn.setTextSize(14);
+        shareBtn.setGravity(Gravity.CENTER);
+        int sharePad = Ui.dp(this, 14);
+        shareBtn.setPadding(sharePad, sharePad, sharePad, sharePad);
+        shareBtn.setTextColor(getColor(R.color.ink));
+        shareBtn.setBackgroundResource(R.drawable.px_option);
+        shareBtn.setClickable(true);
+        LinearLayout.LayoutParams shareLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        shareLp.topMargin = Ui.dp(this, 8);
+        shareBtn.setLayoutParams(shareLp);
+        shareBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sharePoster(script, steps, total);
+            }
+        });
+        actions.addView(shareBtn);
+
         root.addView(actions);
     }
 
     private View buildStep(final PathRecorder.Step s) {
         LinearLayout card = Ui.card(this, 14, 10);
 
-        TextView head = Ui.text(this, "第 " + s.index + " 步"
-                + (s.stageName.isEmpty() ? "" : "  ·  " + s.stageName), 11, R.color.text_hint);
-        card.addView(head);
+        card.addView(Ui.text(this, "第 " + s.index + " 步"
+                + (s.stageName.isEmpty() ? "" : "  ·  " + s.stageName), 10, R.color.ink_hint));
 
-        TextView pick = Ui.text(this, "你选了「" + s.choiceText + "」", 15, R.color.text_primary);
-        pick.setTypeface(Typeface.DEFAULT_BOLD);
-        pick.setPadding(0, Ui.dp(this, 4), 0, 0);
+        TextView pick = Ui.text(this, "你选了「" + s.choiceText + "」", 14, R.color.ink);
+        pick.setPadding(0, Ui.dp(this, 6), 0, 0);
         pick.setLineSpacing(Ui.dp(this, 3), 1f);
         card.addView(pick);
 
@@ -125,19 +182,19 @@ public class ReviewActivity extends Activity {
         tagRow.setPadding(0, Ui.dp(this, 8), 0, 0);
         tagRow.addView(Ui.riskChip(this, s.risk));
         if (s.tag != null && !s.tag.isEmpty()) {
-            tagRow.addView(Ui.text(this, "  " + s.tag, 12, R.color.text_secondary));
+            tagRow.addView(Ui.text(this, "  " + s.tag, 10, R.color.ink_secondary));
         }
         if (s.cost > 0) {
-            tagRow.addView(Ui.text(this, "   -¥" + Ui.money(s.cost), 12, R.color.warn_red));
+            tagRow.addView(Ui.text(this, "   -¥" + Ui.money(s.cost), 10, R.color.warn_red));
         }
         card.addView(tagRow);
 
-        final TextView why = Ui.text(this, s.feedback, 13, R.color.text_secondary);
+        final TextView why = Ui.text(this, s.feedback, 12, R.color.ink_secondary);
         why.setPadding(0, Ui.dp(this, 8), 0, 0);
         why.setLineSpacing(Ui.dp(this, 4), 1f);
         card.addView(why);
 
-        // 低风险步骤默认折叠，点一下展开（复盘不啰嗦）
+        // 低风险步骤默认折叠，点一下展开
         if ("low".equals(s.risk)) {
             why.setVisibility(View.GONE);
             card.setClickable(true);
@@ -153,19 +210,19 @@ public class ReviewActivity extends Activity {
     }
 
     private View actionButton(String label, boolean primary, View.OnClickListener l) {
-        TextView btn = new TextView(this);
+        TextView btn = new PTextView(this);
         btn.setText(label);
-        btn.setTextSize(15);
+        btn.setTextSize(17);
         btn.setGravity(Gravity.CENTER);
         int p = Ui.dp(this, 14);
         btn.setPadding(p, p, p, p);
         btn.setClickable(true);
         if (primary) {
-            btn.setTextColor(getColor(R.color.card_white));
-            btn.setBackgroundColor(getColor(R.color.brand_blue));
+            btn.setTextColor(getColor(R.color.white));
+            btn.setBackgroundResource(R.drawable.px_button);
         } else {
-            btn.setTextColor(getColor(R.color.brand_blue));
-            btn.setBackgroundResource(R.drawable.bg_option);
+            btn.setTextColor(getColor(R.color.ink));
+            btn.setBackgroundResource(R.drawable.px_option);
         }
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -173,5 +230,22 @@ public class ReviewActivity extends Activity {
         btn.setLayoutParams(lp);
         btn.setOnClickListener(l);
         return btn;
+    }
+
+    /** 生成 1080×1350 复盘海报，再以 content:// 交给系统分享面板 */
+    private void sharePoster(Script script, List<PathRecorder.Step> steps, int total) {
+        File file = SharePoster.generate(this, script, steps, total,
+                script == null ? "防骗复盘" : script.title);
+        if (file == null) {
+            Toast.makeText(this, "海报生成失败，请稍后再试", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Uri uri = Uri.parse("content://com.example.antifraud.poster/poster.png");
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("image/png");
+        send.putExtra(Intent.EXTRA_STREAM, uri);
+        send.setClipData(ClipData.newUri(getContentResolver(), "复盘海报", uri));
+        send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(send, "分享复盘海报"));
     }
 }

@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/paper"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.example.antifraud.ui.PTextView
+                android:id="@+id/btn_back"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingTop="4dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="8dp"
+                android:text="← 返回"
+                android:textColor="@color/ink_secondary"
+                android:textSize="12sp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <com.example.antifraud.ui.PTextView
+                android:id="@+id/btn_save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/px_button"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="保存"
+                android:textColor="@color/white"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <com.example.antifraud.ui.PTextView
+            android:id="@+id/tv_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="编辑剧本"
+            android:textColor="@color/ink"
+            android:textSize="20sp" />
+
+        <EditText
+            android:id="@+id/et_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/px_input"
+            android:hint="剧本标题"
+            android:inputType="text"
+            android:padding="11dp"
+            android:textColor="@color/ink"
+            android:textColorHint="@color/ink_hint"
+            android:textSize="13sp" />
+
+        <EditText
+            android:id="@+id/et_scamType"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/px_input"
+            android:hint="骗局类型（如：游戏账号交易诈骗）"
+            android:inputType="text"
+            android:padding="11dp"
+            android:textColor="@color/ink"
+            android:textColorHint="@color/ink_hint"
+            android:textSize="12sp" />
+
+        <com.example.antifraud.ui.PTextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="放在哪个书架上"
+            android:textColor="@color/ink_secondary"
+            android:textSize="10sp" />
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/ll_cats"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+
+        <EditText
+            android:id="@+id/et_intro"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/px_input"
+            android:gravity="top"
+            android:hint="一句话简介（显示在书页上）"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:padding="11dp"
+            android:textColor="@color/ink"
+            android:textColorHint="@color/ink_hint"
+            android:textSize="12sp" />
+
+        <com.example.antifraud.ui.PTextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="节点（点节点编辑台词和选项）"
+            android:textColor="@color/ink"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:id="@+id/ll_nodes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical" />
+
+        <com.example.antifraud.ui.PTextView
+            android:id="@+id/btn_add_node"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/px_option"
+            android:gravity="center"
+            android:padding="12dp"
+            android:text="＋ 新增节点"
+            android:textColor="@color/ink"
+            android:textSize="12sp" />
+
+        <com.example.antifraud.ui.PTextView
+            android:id="@+id/btn_check"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/px_option"
+            android:gravity="center"
+            android:padding="12dp"
+            android:text="校验剧本"
+            android:textColor="@color/brand"
+            android:textSize="12sp" />
+
+        <com.example.antifraud.ui.PTextView
+            android:id="@+id/tv_check"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:lineSpacingExtra="4dp"
+            android:text=""
+            android:textColor="@color/ink_secondary"
+            android:textSize="10sp" />
+    </LinearLayout>
+</ScrollView>

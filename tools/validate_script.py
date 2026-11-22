@@ -108,10 +108,12 @@ def check(path, errors, warnings):
         shortest = min(dist[e] for e in reachable_endings)
         longest = max(dist[e] for e in reachable_endings)
         print(f"  结局数: {len(endings)}  最短通关步数: {shortest}  最长: {longest}")
-        if shortest < 3:
-            errors.append(f"最短通关只要 {shortest} 步，玩家点两下就结束了（要求 >=3）")
-        elif shortest < 6:
-            warnings.append(f"最短通关 {shortest} 步，正式版安全线建议 >=6 步（约 3 分钟）")
+        if shortest < 8:
+            errors.append(f"最短通关只要 {shortest} 步，体验太短（要求 >=8）")
+        elif shortest < 12:
+            warnings.append(f"最短通关 {shortest} 步，单局不足 6 分钟（建议 >=12 步）")
+        if longest < 14:
+            errors.append(f"主线最长只有 {longest} 步，分支不够深（要求 >=14 步）")
 
     # 7 来源
     sources = data.get("sources", [])

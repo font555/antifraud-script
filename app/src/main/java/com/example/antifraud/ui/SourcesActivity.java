@@ -3,8 +3,8 @@ package com.example.antifraud.ui;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
-import android.graphics.Typeface;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -22,12 +22,13 @@ import java.util.List;
  * 来源页：每条来源显示 标题 / 发布方 / 日期 / 支撑哪几步 / 改编说明，点一下复制链接。
  * 答辩时评委随便抽一步问"依据呢"，当场翻到这一页。
  */
-public class SourcesActivity extends Activity {
+public class SourcesActivity extends BaseActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sources);
+        Ui.insetContent(this);
 
         LinearLayout box = findViewById(R.id.ll_sources);
         String scriptId = getIntent().getStringExtra("script_id");
@@ -42,12 +43,25 @@ public class SourcesActivity extends Activity {
             scripts = ScriptRepository.loadAll(this);
         }
 
-        TextView head = Ui.text(this, "真实案例来源", 22, R.color.text_primary);
-        head.setTypeface(Typeface.DEFAULT_BOLD);
-        box.addView(head);
+        // 顶部返回栏
+        LinearLayout topBar = new LinearLayout(this);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        TextView back = Ui.text(this, "←", 22, R.color.ink);
+        back.setPadding(Ui.dp(this, 4), Ui.dp(this, 6), Ui.dp(this, 14), Ui.dp(this, 6));
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+                overridePendingTransition(R.anim.page_in, R.anim.page_out);
+            }
+        });
+        topBar.addView(back);
+        topBar.addView(Ui.text(this, "真实案例来源", 22, R.color.ink));
+        box.addView(topBar);
 
-        TextView sub = Ui.text(this, "剧本中的话术与金额均据此改编，人物已匿名、平台名已虚构", 12, R.color.text_hint);
-        sub.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 12));
+        TextView sub = Ui.text(this, "剧本中的话术与金额均据此改编，人物已匿名、平台名已虚构", 11, R.color.ink_hint);
+        sub.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 12));
         sub.setLineSpacing(Ui.dp(this, 3), 1f);
         box.addView(sub);
 
@@ -55,7 +69,8 @@ public class SourcesActivity extends Activity {
         for (Script s : scripts) {
             for (final CaseSource c : s.sources) {
                 index++;
-                box.addView(buildSource(index, c));
+                View card = buildSource(index, c);
+                box.addView(card);
             }
         }
 
@@ -67,30 +82,29 @@ public class SourcesActivity extends Activity {
     private View buildSource(int index, final CaseSource c) {
         LinearLayout card = Ui.card(this, 14, 10);
 
-        TextView name = Ui.text(this, "【" + index + "】" + c.name, 15, R.color.text_primary);
-        name.setTypeface(Typeface.DEFAULT_BOLD);
+        TextView name = Ui.text(this, "【" + index + "】" + c.name, 14, R.color.ink);
         name.setLineSpacing(Ui.dp(this, 3), 1f);
         card.addView(name);
 
-        TextView pub = Ui.text(this, c.publisher + "  ·  " + c.date, 12, R.color.text_secondary);
+        TextView pub = Ui.text(this, c.publisher + "  ·  " + c.date, 10, R.color.ink_secondary);
         pub.setPadding(0, Ui.dp(this, 6), 0, 0);
         card.addView(pub);
 
         if (c.usedIn != null && !c.usedIn.isEmpty()) {
-            TextView used = Ui.text(this, "支撑：" + c.usedIn, 12, R.color.brand_blue);
+            TextView used = Ui.text(this, "支撑：" + c.usedIn, 10, R.color.brand);
             used.setPadding(0, Ui.dp(this, 6), 0, 0);
             used.setLineSpacing(Ui.dp(this, 3), 1f);
             card.addView(used);
         }
 
         if (c.note != null && !c.note.isEmpty()) {
-            TextView note = Ui.text(this, "改编说明：" + c.note, 12, R.color.text_hint);
+            TextView note = Ui.text(this, "改编说明：" + c.note, 10, R.color.ink_hint);
             note.setPadding(0, Ui.dp(this, 6), 0, 0);
             note.setLineSpacing(Ui.dp(this, 3), 1f);
             card.addView(note);
         }
 
-        TextView url = Ui.text(this, "点此复制链接  " + c.url, 11, R.color.text_hint);
+        TextView url = Ui.text(this, "点此复制链接  " + c.url, 9, R.color.ink_hint);
         url.setPadding(0, Ui.dp(this, 8), 0, 0);
         card.addView(url);
 

@@ -3,6 +3,7 @@ package com.example.antifraud.ui;
 import android.content.Context;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -24,6 +25,11 @@ public final class Ui {
         tv.setText(s);
         tv.setTextSize(sp);
         tv.setTextColor(c.getColor(colorRes));
+        tv.setTypeface(Typefaces.pixel(c));
+        tv.setIncludeFontPadding(false);
+        tv.getPaint().setAntiAlias(false);
+        tv.getPaint().setFakeBoldText(true);
+        tv.getPaint().setSubpixelText(false);
         return tv;
     }
 
@@ -31,7 +37,7 @@ public final class Ui {
     public static LinearLayout card(Context c, float paddingDp, float marginBottomDp) {
         LinearLayout box = new LinearLayout(c);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setBackgroundResource(com.example.antifraud.R.drawable.bg_card);
+        box.setBackgroundResource(com.example.antifraud.R.drawable.px_panel);
         int p = dp(c, paddingDp);
         box.setPadding(p, p, p, p);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -62,7 +68,7 @@ public final class Ui {
         }
         TextView tv = new TextView(c);
         tv.setText(label);
-        tv.setTextSize(11);
+        tv.setTextSize(13);
         tv.setTextColor(fg);
         GradientDrawable gd = new GradientDrawable();
         gd.setCornerRadius(dp(c, 5));
@@ -78,9 +84,51 @@ public final class Ui {
         return String.format("%,d", v);
     }
 
+    /** 给任意 TextView 套上像素字体（关闭抗锯齿，边缘才硬） */
+    public static void pixel(TextView tv) {
+        tv.setTypeface(Typefaces.pixel(tv.getContext()));
+        tv.setIncludeFontPadding(false);
+        tv.getPaint().setAntiAlias(false);
+        tv.getPaint().setFakeBoldText(true);
+        tv.getPaint().setSubpixelText(false);
+    }
+
+    /**
+     * Android 15+ 强制边到边，状态栏会盖住内容。这里给内容区补顶部内边距。
+     * 各 Activity 在 setContentView 之后调用一次即可。
+     */
+    public static void insetContent(final android.app.Activity activity) {
+        final View content = activity.findViewById(android.R.id.content);
+        if (content == null) {
+            return;
+        }
+        final int pl = content.getPaddingLeft();
+        final int pt = content.getPaddingTop();
+        final int pr = content.getPaddingRight();
+        final int pb = content.getPaddingBottom();
+        content.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets insets) {
+                int top;
+                int bottom;
+                if (android.os.Build.VERSION.SDK_INT >= 30) {
+                    android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                    top = bars.top;
+                    bottom = bars.bottom;
+                } else {
+                    top = insets.getSystemWindowInsetTop();
+                    bottom = insets.getSystemWindowInsetBottom();
+                }
+                v.setPadding(pl, pt + top, pr, pb + bottom);
+                return insets;
+            }
+        });
+        content.requestApplyInsets();
+    }
+
     /** 12 号灰色小字，用于各种说明 */
     public static TextView hint(Context c, String s) {
-        TextView tv = text(c, s, 12, com.example.antifraud.R.color.text_hint);
+        TextView tv = text(c, s, 12, com.example.antifraud.R.color.ink_hint);
         tv.setLineSpacing(dp(c, 3), 1f);
         return tv;
     }
