@@ -83,13 +83,13 @@ def main():
     print("tree:", tree["sha"][:10])
 
     message = (
-        "feat: v2.0 完整快照（书架 · 翻书 · 逐条聊天 · 损失账本 · 复盘 · 来源 · 设置 · "
-        "剧本工坊 · 分享海报 · 桌面小组件）\n\n"
+        "feat: v2.1 完整快照（新手引导 · 书架 · 翻书 · 逐条聊天 · 损失账本 · 复盘 · 来源 · "
+        "设置 · 剧本工坊 · 分享海报 · 桌面小组件）\n\n"
+        "- 新增首次进入的聚光灯新手引导（4 步高亮 + 跳过 + 只弹一次）\n"
         "- 6 类 17 个剧本 / 405 个剧情节点 / 71 条可核验来源\n"
         "- 零权限、零联网、零第三方依赖\n"
-        "- 新增 docs/项目介绍.md、docs/sources.md、剧本校验脚本\n\n"
-        "注：本次通过 GitHub API 推送（本机 HTTPS git 通道被网络阻断），"
-        "本地仍保留细粒度提交历史。"
+        "- 文档：docs/项目介绍.md、docs/sources.md、前后测、演示稿、PPT 大纲\n\n"
+        "注：通过 GitHub API 推送（本机 HTTPS git 通道被网络阻断），本地保留细粒度提交历史。"
     )
     commit = api("POST", f"/repos/{REPO}/git/commits", {
         "message": message, "tree": tree["sha"], "parents": [parent]})
