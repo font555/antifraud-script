@@ -42,6 +42,9 @@ public class SettingsStore {
 
     public static String fontScaleLabel(Context c) {
         float s = fontScale(c);
+        if (s >= 1.5f) {
+            return "超大";
+        }
         if (s >= 1.28f) {
             return "特大";
         }

@@ -5,6 +5,7 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -67,16 +68,24 @@ public class SettingsActivity extends BaseActivity {
         // ---- 字号 ----
         LinearLayout sizeCard = Ui.card(this, 14, 12);
         sizeCard.addView(Ui.text(this, "字号大小", 12, R.color.ink));
+        HorizontalScrollView sizeScroll = new HorizontalScrollView(this);
+        sizeScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout.LayoutParams scrollLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        scrollLp.topMargin = Ui.dp(this, 10);
+        sizeScroll.setLayoutParams(scrollLp);
         LinearLayout sizeRow = new LinearLayout(this);
         sizeRow.setOrientation(LinearLayout.HORIZONTAL);
-        sizeRow.setPadding(0, Ui.dp(this, 10), 0, 0);
         float curScale = SettingsStore.fontScale(this);
         sizeRow.addView(sizeChip("标准", Math.abs(curScale - 1.0f) < 0.02f, 1.0f));
         sizeRow.addView(sizeChip("大", Math.abs(curScale - 1.15f) < 0.02f, 1.15f));
         sizeRow.addView(sizeChip("特大", Math.abs(curScale - 1.3f) < 0.02f, 1.3f));
-        sizeCard.addView(sizeRow);
-        TextView sizeHint = Ui.text(this, "调大后所有页面的文字都会跟着变大。", 9, R.color.ink_hint);
+        sizeRow.addView(sizeChip("超大", Math.abs(curScale - 1.55f) < 0.02f, 1.55f));
+        sizeScroll.addView(sizeRow);
+        sizeCard.addView(sizeScroll);
+        TextView sizeHint = Ui.text(this, "调大后所有页面的文字都会跟着变大；觉得还小可以用「超大」。", 9, R.color.ink_hint);
         sizeHint.setPadding(0, Ui.dp(this, 8), 0, 0);
+        sizeHint.setLineSpacing(Ui.dp(this, 3), 1f);
         sizeCard.addView(sizeHint);
         root.addView(sizeCard);
 
@@ -138,9 +147,11 @@ public class SettingsActivity extends BaseActivity {
         tv.setText(text);
         tv.setTextSize(12);
         tv.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 44), 1f);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, Ui.dp(this, 44));
         lp.setMargins(Ui.dp(this, 3), 0, Ui.dp(this, 3), 0);
         tv.setLayoutParams(lp);
+        tv.setPadding(Ui.dp(this, 18), 0, Ui.dp(this, 18), 0);
         tv.setTextColor(getColor(selected ? R.color.white : R.color.ink));
         tv.setBackgroundResource(selected ? R.drawable.px_button : R.drawable.px_option);
         tv.setOnClickListener(new View.OnClickListener() {
