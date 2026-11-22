@@ -11,6 +11,7 @@ public class SettingsStore {
     private static final String PREF = "antifraud_settings";
     private static final String KEY_FONT_STYLE = "font_style";
     private static final String KEY_FONT_SCALE = "font_scale";
+    private static final String KEY_GUIDE = "guide_done";
 
     public static final int FONT_PIXEL = 0;
     public static final int FONT_SYSTEM = 1;
@@ -48,6 +49,14 @@ public class SettingsStore {
             return "大";
         }
         return "标准";
+    }
+
+public static boolean guideDone(Context c) {
+        return prefs(c).getBoolean(KEY_GUIDE, false);
+    }
+
+    public static void setGuideDone(Context c) {
+        prefs(c).edit().putBoolean(KEY_GUIDE, true).apply();
     }
 
     private static SharedPreferences prefs(Context c) {

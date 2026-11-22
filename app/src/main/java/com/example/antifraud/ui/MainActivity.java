@@ -51,6 +51,8 @@ public class MainActivity extends BaseActivity {
     private List<Script> scripts = new ArrayList<>();
     private boolean opening = false;
     private int lastScriptCount = -1;
+    private View studioCard;
+    private boolean guideShowing = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -121,6 +123,41 @@ public class MainActivity extends BaseActivity {
         if (now != lastScriptCount) {
             buildShelf();
         }
+        maybeShowGuide();
+    }
+
+    /** 第一次进书架时弹聚光灯引导；看过一次就不再弹 */
+    private void maybeShowGuide() {
+        if (guideShowing || SettingsStore.guideDone(this) || !UserStore.isRegistered(this)) {
+            return;
+        }
+        guideShowing = true;
+        final View content = findViewById(android.R.id.content);
+        content.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (isFinishing() || !guideShowing) {
+                    return;
+                }
+                GuideOverlay guide = new GuideOverlay(MainActivity.this);
+                guide.addStep(findViewById(R.id.header), "这里是你的战绩",
+                        "已读几本、在剧情里一共损失了多少钱，都记在这台手机上，不联网。");
+                guide.addStep(findViewById(R.id.ll_shelf), "从一本书开始",
+                        "六本书对应六类骗局。点开一本，封面会翻开，进入真实案件改编的对话。");
+                guide.addStep(studioCard, "自己写剧本",
+                        "在剧本工坊里写剧本，导出成文件发给同学，同学导入就能玩。");
+                guide.addStep(findViewById(R.id.btn_settings), "觉得字累眼？",
+                        "设置里可以切换系统字体、调大字号，看久了不费眼。");
+                ((android.view.ViewGroup) content).addView(guide);
+                guide.start(new GuideOverlay.OnFinish() {
+                    @Override
+                    public void onFinish() {
+                        SettingsStore.setGuideDone(MainActivity.this);
+                        guideShowing = false;
+                    }
+                });
+            }
+        }, 800);
     }
 
     private void refreshHeader() {
@@ -408,6 +445,7 @@ public class MainActivity extends BaseActivity {
 
         // 剧本工坊入口
         LinearLayout studio = Ui.card(this, 14, 12);
+        studioCard = studio;
         studio.addView(Ui.text(this, "剧本工坊", 12, R.color.ink));
         TextView studioDesc = Ui.text(this, "自己写一个剧本，导出成文件，同学导入就能玩", 9, R.color.ink_hint);
         studioDesc.setPadding(0, Ui.dp(this, 6), 0, 0);
