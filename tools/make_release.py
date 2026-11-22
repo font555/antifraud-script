@@ -10,8 +10,8 @@ ROOT = r"C:\Users\Lecoo\Desktop\antifraud-script"
 REPO = "font555/antifraud-script"
 API = "https://api.github.com"
 UPLOADS = "https://uploads.github.com"
-APK = os.path.join(ROOT, "dist", "antifraud-v2.2-debug.apk")
-TAG = "v2.2"
+APK = os.path.join(ROOT, "dist", "antifraud-v2.3-debug.apk")
+TAG = "v2.3"
 
 
 def token():
@@ -85,7 +85,7 @@ size = os.path.getsize(APK)
 print("上传 APK:", round(size / 1024 / 1024, 2), "MB")
 data = open(APK, "rb").read()
 asset = call("POST",
-             f"{UPLOADS}/repos/{REPO}/releases/{rel['id']}/assets?name=antifraud-v2.2-debug.apk",
+             f"{UPLOADS}/repos/{REPO}/releases/{rel['id']}/assets?name=antifraud-v2.3-debug.apk",
              raw=data)
 print("asset:", asset["browser_download_url"])
 print("RELEASE_URL:", rel["html_url"])

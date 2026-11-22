@@ -11,6 +11,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.antifraud.R;
+import com.example.antifraud.engine.AppLog;
 import com.example.antifraud.engine.UserStore;
 
 /**
@@ -89,25 +90,46 @@ public class RegisterActivity extends BaseActivity {
 
     private void submit() {
         String nick = etNick.getText() == null ? "" : etNick.getText().toString().trim();
+        // 按"字"算长度：中文 / emoji 都算 1 个，不用字节数
+        int len = nick.codePointCount(0, nick.length());
         if (TextUtils.isEmpty(nick)) {
-            etNick.animate().translationX(10).setDuration(60)
-                    .withEndAction(new Runnable() {
-                        @Override
-                        public void run() {
-                            etNick.animate().translationX(-10).setDuration(60)
-                                    .withEndAction(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            etNick.animate().translationX(0).setDuration(60).start();
-                                        }
-                                    }).start();
-                        }
-                    }).start();
+            shakeNick();
+            AppLog.i("USER", "注册被拦下：长度 " + len);
             Toast.makeText(this, "先起个名字吧", Toast.LENGTH_SHORT).show();
             return;
         }
+        if (len < 2) {
+            shakeNick();
+            AppLog.i("USER", "注册被拦下：长度 " + len);
+            Toast.makeText(this, "昵称至少 2 个字", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (len > 8) {
+            // 输入框的 maxLength 在 XML 里，不在本文件范围内；超长时只提示、不截断也不注册
+            shakeNick();
+            AppLog.i("USER", "注册被拦下：长度 " + len);
+            Toast.makeText(this, "昵称最多 8 个字", Toast.LENGTH_SHORT).show();
+            return;
+        }
         UserStore.register(this, nick, selected);
+        AppLog.i("USER", "注册 " + nick + " 头像 " + selected);
         close();
+    }
+
+    private void shakeNick() {
+        etNick.animate().translationX(10).setDuration(60)
+                .withEndAction(new Runnable() {
+                    @Override
+                    public void run() {
+                        etNick.animate().translationX(-10).setDuration(60)
+                                .withEndAction(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        etNick.animate().translationX(0).setDuration(60).start();
+                                    }
+                                }).start();
+                    }
+                }).start();
     }
 
     private void close() {

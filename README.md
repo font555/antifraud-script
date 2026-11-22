@@ -28,13 +28,13 @@
 $env:JAVA_HOME = 'G:\Android\jbr'     # 用 Android Studio 自带的 JDK
 .\gradlew.bat assembleDebug
 ```
-APK 输出：`app/build/outputs/apk/debug/app-debug.apk`（约 7 MB，其中 4.9 MB 是像素字体）。
+APK 输出：`app/build/outputs/apk/debug/app-debug.apk`（约 2.5 MB，零第三方依赖）。
 
 ## 三、界面流程（不是普通列表，是一本书）
 
 ```
-启动 → 注册（昵称+头像，只存本机）
-     → 书架（5 本像素书，一本书=一类骗局）
+启动 → 注册（昵称+头像，只存本机）→ 首次进入的聚光灯新手引导（4 步，可跳过）
+     → 书架（6 本像素书，一本书=一类骗局）
      → 点书：封面沿 Y 轴翻转 + 放大 → 书页（剧本列表）
      → 聊天页：对方气泡逐条出现、损失金额滚动增长、选项卡淡入
      → 结局卡片 → 复盘页：损失数字滚动、逐节点卡片依次滑入、风险标签

@@ -77,6 +77,7 @@ public class ScriptStore {
             FileOutputStream out = new FileOutputStream(f);
             out.write(json.getBytes("UTF-8"));
             out.close();
+            AppLog.i("STORE", "保存剧本 " + s.id + " 节点 " + s.nodes.size());
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -91,9 +92,13 @@ public class ScriptStore {
             if (s == null || s.id == null || s.id.isEmpty()) {
                 return null;
             }
+            String oldId = s.id;
+            // 内置剧本同名会顶掉内置剧本（load 时用户剧本优先），自动加 -user 后缀避开
+            s.id = resolveImportId(c, oldId);
             if (!saveUser(c, s)) {
                 return null;
             }
+            AppLog.i("STORE", "导入剧本 " + oldId + " → " + s.id);
             return s;
         } catch (Exception e) {
             e.printStackTrace();
@@ -101,7 +106,41 @@ public class ScriptStore {
         }
     }
 
+    /** 导入 id 与内置剧本冲突时改成 <id>-user、<id>-user2……直到不与内置/已有用户剧本重名 */
+    private static String resolveImportId(Context c, String id) {
+        if (!isBuiltin(c, id)) {
+            return id;
+        }
+        String base = id + "-user";
+        String candidate = base;
+        int seq = 2;
+        while (isBuiltin(c, candidate) || isUserScript(c, candidate)) {
+            candidate = base + seq;
+            seq++;
+        }
+        return candidate;
+    }
+
+    /** assets/scripts 下是否有同名内置剧本 */
+    private static boolean isBuiltin(Context c, String id) {
+        try {
+            String[] files = c.getAssets().list(DIR);
+            if (files != null) {
+                String target = id + ".json";
+                for (String f : files) {
+                    if (target.equals(f)) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            AppLog.e("STORE", "读取内置剧本列表失败", e);
+        }
+        return false;
+    }
+
     public static boolean deleteUser(Context c, String id) {
+        AppLog.i("STORE", "删除剧本 " + id);
         return new File(dir(c), id + ".json").delete();
     }
 

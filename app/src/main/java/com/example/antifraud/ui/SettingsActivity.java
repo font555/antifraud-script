@@ -2,6 +2,7 @@ package com.example.antifraud.ui;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -107,7 +108,17 @@ public class SettingsActivity extends BaseActivity {
 
         // ---- 关于 ----
         LinearLayout about = Ui.card(this, 14, 0);
-        about.addView(Ui.text(this, "关于", 12, R.color.ink));
+        TextView aboutTitle = Ui.text(this, "关于", 12, R.color.ink);
+        // 隐藏入口：长按「关于」标题 2 秒打开运行日志（放在不起眼的地方）
+        aboutTitle.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                Toast.makeText(SettingsActivity.this, "打开运行日志", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(SettingsActivity.this, LogActivity.class));
+                return true;
+            }
+        });
+        about.addView(aboutTitle);
         TextView a1 = Ui.text(this, "反诈剧本杀 · 教学演示作品\n世界职业院校技能大赛 · 新一代信息技术赛道 · 中职组",
                 9, R.color.ink_secondary);
         a1.setPadding(0, Ui.dp(this, 8), 0, 0);

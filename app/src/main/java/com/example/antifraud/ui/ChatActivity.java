@@ -12,6 +12,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
@@ -22,8 +23,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.antifraud.R;
+import com.example.antifraud.engine.AppLog;
 import com.example.antifraud.engine.PathRecorder;
 import com.example.antifraud.engine.ScriptRepository;
+import com.example.antifraud.engine.SettingsStore;
 import com.example.antifraud.engine.UserStore;
 import com.example.antifraud.model.Choice;
 import com.example.antifraud.model.Script;
@@ -39,6 +42,8 @@ public class ChatActivity extends BaseActivity {
     private StoryNode current;
     private final PathRecorder recorder = PathRecorder.get();
     private int lastStage = -1;
+    /** 超大字号（1.5 倍及以上）：顶栏只保留必要信息，避免换行和挤压 */
+    private boolean bigFont;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private TextView tvTitle;
@@ -74,6 +79,8 @@ public class ChatActivity extends BaseActivity {
         tvTitle.setText(script.title);
         pbStage.setMax(script.stageCount);
 
+        protectHeader();
+
         setupAnimations();
 
         findViewById(R.id.btn_exit).setOnClickListener(new View.OnClickListener() {
@@ -90,6 +97,35 @@ public class ChatActivity extends BaseActivity {
         });
 
         startScript();
+    }
+
+    /**
+     * 顶栏防溢出：标题/金额按字号设置自动收缩，副标题只留幕次，
+     * 右侧账本区固定最小宽度并靠右，1.55 倍「超大」字号下也不会和标题撞在一起。
+     */
+    private void protectHeader() {
+        float scale = SettingsStore.fontScale(this);
+        bigFont = scale >= 1.5f;
+        // 标题：标准 18sp，特大降一档到 15sp，超大降两档到 12sp（最低 12sp），只显示一行
+        tvTitle.setTextSize(bigFont ? 12f : (scale >= 1.28f ? 15f : 18f));
+        tvTitle.setSingleLine(true);
+        tvTitle.setMaxLines(1);
+        tvTitle.setEllipsize(TextUtils.TruncateAt.END);
+
+        tvStage.setSingleLine(true);
+        tvStage.setMaxLines(1);
+        tvStage.setEllipsize(TextUtils.TruncateAt.END);
+
+        // 右侧「已损失 / 重来」：留最小宽度并整体靠右，避免被标题挤压
+        tvLoss.setTextSize(bigFont ? 12f : 14f);
+        tvLoss.setGravity(Gravity.END);
+        View lossBox = (View) tvLoss.getParent();
+        if (lossBox != null) {
+            lossBox.setMinimumWidth(Ui.dp(this, 76));
+            if (lossBox instanceof LinearLayout) {
+                ((LinearLayout) lossBox).setGravity(Gravity.END);
+            }
+        }
     }
 
     /** 消息气泡和选项的出现/消失都带动画，避免"啪一下全出来" */
@@ -112,6 +148,7 @@ public class ChatActivity extends BaseActivity {
 
     /** 重新开始（也用于"重来"按钮） */
     private void startScript() {
+        AppLog.i("CHAT", "开始剧本 " + script.id + " 《" + script.title + "》");
         handler.removeCallbacksAndMessages(null);
         speakerColors.clear();
         nextColorIndex = 0;
@@ -132,8 +169,12 @@ public class ChatActivity extends BaseActivity {
 
     /** 渲染一个节点：先追加消息气泡，再渲染选项 */
     private void renderNode(StoryNode node) {
-        tvStage.setText("第 " + node.stage + " 幕 / 共 " + script.stageCount + " 幕"
-                + (node.stageName.isEmpty() ? "" : "  ·  " + node.stageName));
+        // 超大字号只显示幕次，省掉「 · 阶段名」，避免副标题换行错乱
+        String stageText = "第 " + node.stage + " 幕 / 共 " + script.stageCount + " 幕";
+        if (!bigFont && !node.stageName.isEmpty()) {
+            stageText += "  ·  " + node.stageName;
+        }
+        tvStage.setText(stageText);
         pbStage.setProgress(node.stage);
 
         // 换幕时插入一个居中分隔条，像剧本的幕次
@@ -402,6 +443,8 @@ public class ChatActivity extends BaseActivity {
             return;
         }
         recorder.record(current.id, current.stageName, c);
+        int step = recorder.getSteps().size();
+        AppLog.i("CHAT", "选择 " + step + " " + riskLabel(c.risk) + " ￥" + c.cost + " " + c.text);
 
         addBubble("我", c.text, 1);
         if (c.cost > 0) {
@@ -410,15 +453,30 @@ public class ChatActivity extends BaseActivity {
             addBubble("系统", "这一次你没有转账", 2);
         }
         updateLoss();
+        AppLog.i("CHAT", "累计损失 ￥" + recorder.totalCost() + " 步数 " + step);
         llOptions.removeAllViews();
 
-        StoryNode next = (c.next == null || c.next.isEmpty()) ? null : script.nodes.get(c.next);
+        StoryNode next = (c.next == null || c.next.trim().isEmpty()) ? null : script.nodes.get(c.next);
         if (next == null) {
-            goReview(current);
+            // 选项没有可用的下一节点：实际没有到达任何结局节点（旧代码误把上一个剧情
+            // 节点当结局传过去）。当前节点本身是结局就传它，否则传 null，
+            // 由复盘页显示兜底标题「你走完了这段剧本」。
+            goReview(current.isEnd ? current : null);
             return;
         }
         current = next;
         renderNode(next);
+    }
+
+    /** 运行日志用：风险等级的中文名 */
+    private static String riskLabel(String risk) {
+        if ("high".equals(risk)) {
+            return "高风险";
+        }
+        if ("medium".equals(risk)) {
+            return "中风险";
+        }
+        return "低风险";
     }
 
     private void addEndingCard(final StoryNode node) {
@@ -463,9 +521,14 @@ public class ChatActivity extends BaseActivity {
         UserStore.addPlay(this);
         UserStore.addLoss(this, recorder.totalCost());
 
+        String endingTitle = ending == null ? "" : ending.endingTitle;
+        AppLog.i("CHAT", "进入复盘 损失 ￥" + recorder.totalCost()
+                + " 步数 " + recorder.getSteps().size()
+                + " 结局「" + (endingTitle.isEmpty() ? "无" : endingTitle) + "」");
+
         Intent i = new Intent(this, ReviewActivity.class);
         i.putExtra("script_id", script.id);
-        i.putExtra("ending_title", ending == null ? "" : ending.endingTitle);
+        i.putExtra("ending_title", endingTitle);
         i.putExtra("ending_advice", ending == null ? "" : ending.endingAdvice);
         startActivity(i);
         overridePendingTransition(R.anim.page_in, R.anim.page_out);
@@ -518,6 +581,8 @@ public class ChatActivity extends BaseActivity {
                 .setPositiveButton("重来", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
+                        AppLog.i("CHAT", "重来按钮 清空进度 原损失 ￥"
+                                + recorder.totalCost() + " 步数 " + recorder.getSteps().size());
                         startScript();
                     }
                 })

@@ -14,6 +14,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.antifraud.R;
+import com.example.antifraud.engine.AppLog;
 import com.example.antifraud.engine.PathRecorder;
 import com.example.antifraud.engine.ScriptRepository;
 import com.example.antifraud.model.Script;
@@ -42,6 +43,8 @@ public class ReviewActivity extends BaseActivity {
         PathRecorder rec = PathRecorder.get();
         List<PathRecorder.Step> steps = rec.getSteps();
         int total = rec.totalCost();
+        AppLog.i("REVIEW", "进入复盘 剧本 " + scriptId + " 损失 ￥" + total
+                + " 步数 " + steps.size() + " 高风险 " + rec.highRiskCount() + " 次");
 
         // 0) 顶部返回栏
         LinearLayout topBar = new LinearLayout(this);
@@ -60,12 +63,13 @@ public class ReviewActivity extends BaseActivity {
         topBar.addView(Ui.text(this, "复盘报告", 22, R.color.ink));
         root.addView(topBar);
 
-        if (endingTitle != null && !endingTitle.isEmpty()) {
-            TextView sub = Ui.text(this, endingTitle, 14, R.color.ink_secondary);
-            sub.setPadding(0, Ui.dp(this, 8), 0, 0);
-            sub.setLineSpacing(Ui.dp(this, 3), 1f);
-            root.addView(sub);
-        }
+        // 标题：有结局节点就用结局标题；没有（剧本缺跳转、真的中途退出）用兜底文案
+        String reportTitle = (endingTitle == null || endingTitle.trim().isEmpty())
+                ? "你走完了这段剧本" : endingTitle;
+        TextView sub = Ui.text(this, reportTitle, 14, R.color.ink_secondary);
+        sub.setPadding(0, Ui.dp(this, 8), 0, 0);
+        sub.setLineSpacing(Ui.dp(this, 3), 1f);
+        root.addView(sub);
 
         // 1) 结算卡：你的损失 vs 真实案件
         LinearLayout card = Ui.card(this, 16, 12);
@@ -133,10 +137,14 @@ public class ReviewActivity extends BaseActivity {
         actions.addView(actionButton("重玩另一条路", false, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                AppLog.i("REVIEW", "重玩另一条路 剧本 " + scriptId);
+                // 先结束复盘页再开聊天页：返回时回到剧本选择页，不会残留旧页面层级；
+                // CLEAR_TOP 让栈里可能存在的旧聊天页被清掉，按新一局重新创建。
                 Intent i = new Intent(ReviewActivity.this, ChatActivity.class);
                 i.putExtra("script_id", scriptId);
-                startActivity(i);
+                i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 finish();
+                startActivity(i);
             }
         }));
 
@@ -157,6 +165,7 @@ public class ReviewActivity extends BaseActivity {
         shareBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                AppLog.i("REVIEW", "生成分享海报 损失 ￥" + total + " 步数 " + steps.size());
                 sharePoster(script, steps, total);
             }
         });

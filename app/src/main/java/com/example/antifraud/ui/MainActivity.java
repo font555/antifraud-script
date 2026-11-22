@@ -53,6 +53,8 @@ public class MainActivity extends BaseActivity {
     private int lastScriptCount = -1;
     private View studioCard;
     private boolean guideShowing = false;
+    private GuideOverlay guide;
+    private boolean animateShelf = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,10 +120,12 @@ public class MainActivity extends BaseActivity {
         }
         refreshHeader();
         buildExtra();
-        // 从剧本工坊回来后剧本数量可能变了，重新铺一次书架
+        // 从剧本工坊回来后剧本数量可能变了：只重铺、不重播入场动画（避免整屏闪一下）
         int now = ScriptRepository.loadAll(this).size();
         if (now != lastScriptCount) {
+            animateShelf = false;
             buildShelf();
+            animateShelf = true;
         }
         maybeShowGuide();
     }
@@ -139,8 +143,9 @@ public class MainActivity extends BaseActivity {
                 if (isFinishing() || !guideShowing) {
                     return;
                 }
-                GuideOverlay guide = new GuideOverlay(MainActivity.this);
-                guide.addStep(findViewById(R.id.header), "这里是你的战绩",
+                GuideOverlay overlay = new GuideOverlay(MainActivity.this);
+                guide = overlay;
+                overlay.addStep(findViewById(R.id.header), "这里是你的战绩",
                         "已读几本、在剧情里一共损失了多少钱，都记在这台手机上，不联网。");
                 guide.addStep(findViewById(R.id.ll_shelf), "从一本书开始",
                         "六本书对应六类骗局。点开一本，封面会翻开，进入真实案件改编的对话。");
@@ -148,16 +153,28 @@ public class MainActivity extends BaseActivity {
                         "在剧本工坊里写剧本，导出成文件发给同学，同学导入就能玩。");
                 guide.addStep(findViewById(R.id.btn_settings), "觉得字累眼？",
                         "设置里可以切换系统字体、调大字号，看久了不费眼。");
-                ((android.view.ViewGroup) content).addView(guide);
-                guide.start(new GuideOverlay.OnFinish() {
+                ((android.view.ViewGroup) content).addView(overlay);
+                overlay.start(new GuideOverlay.OnFinish() {
                     @Override
                     public void onFinish() {
                         SettingsStore.setGuideDone(MainActivity.this);
                         guideShowing = false;
+                        guide = null;
+                        com.example.antifraud.engine.AppLog.i("GUIDE", "引导结束");
                     }
                 });
             }
         }, 800);
+    }
+
+    /** 返回键：引导开着时先关引导，避免直接退出 App */
+    @Override
+    public void onBackPressed() {
+        if (guide != null) {
+            guide.finish();
+            return;
+        }
+        super.onBackPressed();
     }
 
     private void refreshHeader() {
@@ -166,6 +183,9 @@ public class MainActivity extends BaseActivity {
         tvLoss.setText("损失 ¥" + Ui.money(UserStore.totalLoss(this)));
         int a = UserStore.avatar(this);
         tvAvatar.setText(AVATARS[a >= 0 && a < AVATARS.length ? a : 0]);
+        // 记录首页实际读到的数值，方便排查"为什么首页没更新"
+        com.example.antifraud.engine.AppLog.i("MAIN", "首页刷新：已读 " + UserStore.plays(this)
+                + " 本，累计损失 " + UserStore.totalLoss(this));
     }
 
     private void buildShelf() {
@@ -245,10 +265,15 @@ public class MainActivity extends BaseActivity {
 
         cell.setAlpha(0f);
         cell.setTranslationY(Ui.dp(this, 20));
-        cell.animate().alpha(1f).translationY(0f)
-                .setDuration(280)
-                .setStartDelay(position * 55)
-                .start();
+        if (animateShelf) {
+            cell.animate().alpha(1f).translationY(0f)
+                    .setDuration(280)
+                    .setStartDelay(position * 55)
+                    .start();
+        } else {
+            cell.setAlpha(1f);
+            cell.setTranslationY(0f);
+        }
 
         cell.setOnClickListener(new View.OnClickListener() {
             @Override

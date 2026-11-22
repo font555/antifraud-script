@@ -3,6 +3,7 @@ package com.example.antifraud.ui;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.widget.RemoteViews;
@@ -40,6 +41,18 @@ public class TipsWidgetProvider extends AppWidgetProvider {
             "被骗后别删聊天记录，那是报警最有力的证据。",
             "国家反诈中心 APP 是官方防骗软件，可用于预警、举报和风险验证。"
     };
+
+    /** App 里数据变化时会发这个广播，收到就立刻刷新，不必等系统 30 分钟周期 */
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        super.onReceive(context, intent);
+        if (intent != null && UserStore.ACTION_STATS_CHANGED.equals(intent.getAction())) {
+            AppWidgetManager manager = AppWidgetManager.getInstance(context);
+            int[] ids = manager.getAppWidgetIds(
+                    new ComponentName(context, TipsWidgetProvider.class));
+            onUpdate(context, manager, ids);
+        }
+    }
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {

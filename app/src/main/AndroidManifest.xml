@@ -26,6 +26,7 @@
         <activity android:name=".ui.StudioActivity" android:exported="false" />
         <activity android:name=".ui.EditorActivity" android:exported="false" />
         <activity android:name=".ui.NodeEditActivity" android:exported="false" />
+        <activity android:name=".ui.LogActivity" android:exported="false" />
         <activity android:name=".ui.ScriptPickerActivity" android:exported="false" />
         <activity android:name=".ui.ChatActivity" android:exported="false" />
         <activity android:name=".ui.ReviewActivity" android:exported="false" />
