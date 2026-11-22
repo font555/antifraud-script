@@ -71,6 +71,10 @@ def check(path, errors, warnings):
                 errors.append(f'{nid} 选项{i + 1}: risk 取值非法 "{opt.get("risk")}"')
             if opt.get("cost", 0) < 0:
                 errors.append(f'{nid} 选项{i + 1}: cost 不能为负')
+            # 一致性：只要这一步会损失钱，就必须标 high，否则复盘会出现"损失 X 元、高风险 0 次"
+            if opt.get("cost", 0) > 0 and opt.get("risk") != "high":
+                errors.append(
+                    f'{nid} 选项{i + 1}: 有金额损失（cost={opt.get("cost")}）却标成 {opt.get("risk")} 风险，必须标 high')
 
     # 5 可达性
     seen = set()
