@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_blue">#1D3F6E</color>
+    <color name="brand_blue_light">#2E5A94</color>
+    <color name="warn_red">#D93025</color>
+    <color name="risk_medium">#C77700</color>
+    <color name="risk_low">#2E7D32</color>
+    <color name="bg_page">#F5F6F8</color>
+    <color name="card_white">#FFFFFF</color>
+    <color name="text_primary">#1A1A1A</color>
+    <color name="text_secondary">#666666</color>
+    <color name="text_hint">#999999</color>
+    <color name="line_grey">#E5E7EB</color>
+    <color name="chip_high_bg">#FDECEA</color>
+    <color name="chip_medium_bg">#FDF3E3</color>
+    <color name="chip_low_bg">#E9F5EC</color>
+</resources>

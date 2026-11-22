@@ -1,0 +1,4 @@
+// 根工程只声明插件版本，具体配置在 app/build.gradle
+plugins {
+    id 'com.android.application' version '9.5.2' apply false
+}

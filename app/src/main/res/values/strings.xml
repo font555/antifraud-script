@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">反诈剧本杀</string>
+    <string name="slogan">每个剧情节点，都能点开真实案件来源</string>
+    <string name="loss_label">已损失</string>
+    <string name="restart">重来</string>
+    <string name="review">查看复盘报告</string>
+    <string name="sources">查看真实案例来源</string>
+    <string name="disclaimer">本作品为教学演示 · 零权限 · 不联网 · 不收集任何个人信息</string>
+</resources>
