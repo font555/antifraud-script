@@ -35,7 +35,19 @@ public class GuideOverlay extends FrameLayout {
         void onFinish();
     }
 
+    /** 每一步显示前先做准备（比如先切到对应的 Tab） */
+    public interface OnStepPrepare {
+        void onPrepare(int index);
+    }
+
     private static final long STEP_TIMEOUT_MS = 1600;
+    private OnStepPrepare preparer;
+    private boolean prepared = false;
+
+    public GuideOverlay setStepPreparer(OnStepPrepare p) {
+        preparer = p;
+        return this;
+    }
 
     private static class Step {
         final View target;
@@ -169,10 +181,23 @@ public class GuideOverlay extends FrameLayout {
         }, 220);
     }
 
-    /** 等遮罩完成测量后再定位；量不到就直接用屏幕尺寸兜底 */
+    /** 等遮罩完成测量后再定位；先让宿主切好 Tab，量不到就直接用屏幕尺寸兜底 */
     private void tryShow() {
         if (finished) {
             return;
+        }
+        if (!prepared) {
+            prepared = true;
+            if (preparer != null) {
+                preparer.onPrepare(index);
+                postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        tryShow();
+                    }
+                }, 380);
+                return;
+            }
         }
         if (getWidth() == 0 || getHeight() == 0) {
             post(new Runnable() {
@@ -191,6 +216,7 @@ public class GuideOverlay extends FrameLayout {
             return;
         }
         index++;
+        prepared = false;
         if (index >= steps.size()) {
             finish();
         } else {

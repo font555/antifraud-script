@@ -62,6 +62,11 @@ public static boolean guideDone(Context c) {
         prefs(c).edit().putBoolean(KEY_GUIDE, true).apply();
     }
 
+    /** 允许重新播放新手引导（"我的 → 新手引导"用） */
+    public static void setGuideDone(Context c, boolean done) {
+        prefs(c).edit().putBoolean(KEY_GUIDE, done).apply();
+    }
+
     private static SharedPreferences prefs(Context c) {
         return c.getSharedPreferences(PREF, Context.MODE_PRIVATE);
     }

@@ -1,0 +1,58 @@
+{
+  "cases": [
+    {
+      "title": "为买游戏账号，高中生被骗 5 万多元",
+      "publisher": "人民网四川频道（转载华西都市报）",
+      "date": "2025-08-22",
+      "tag": "游戏账号",
+      "amount": "5 万余元",
+      "synopsis": "看到低价全皮账号后，从定金、尾款到「刷流水」，一步步追加转账。",
+      "url": "http://sc.people.com.cn/BIG5/n2/2025/0822/c345459-41329320.html"
+    },
+    {
+      "title": "AI 诈骗新套路：「女儿」要参加学校培训班",
+      "publisher": "光明网（来源：昆明五华警方）",
+      "date": "2024-06-10",
+      "tag": "AI换脸",
+      "amount": "3.5 万元",
+      "synopsis": "家长收到「孩子」的视频求助，声音与画面都像本人，险些转账。",
+      "url": "https://m.gmw.cn/2024-06/10/content_1303758930.htm"
+    },
+    {
+      "title": "熟人视频借款 3 万元，记者亲历 AI「换脸」诈骗",
+      "publisher": "福建日报（第 04 版）",
+      "date": "2026-03-22",
+      "tag": "AI换脸",
+      "amount": "3 万元",
+      "synopsis": "视频里是熟人的脸和声音，警方提醒：眼见未必为实。",
+      "url": "https://fjrb.fjdaily.com/pc/con/202603/22/content_520628.html"
+    },
+    {
+      "title": "刷单返利全是坑，6 分钟紧急止付",
+      "publisher": "人民公安报（第 08 版）",
+      "date": "2026-08-24",
+      "tag": "刷单返利",
+      "amount": "及时止付",
+      "synopsis": "点赞、关注拿小额返利，再以「大单需要垫付」收割本金。",
+      "url": "https://epaper.cpd.com.cn/szb/wwwcpd_9/dzb_16465/rmga/2026/2026_08_24/16466_2026_08_24_46169/826/t_1246895.html"
+    },
+    {
+      "title": "出租出借银行卡，当心涉嫌帮信罪",
+      "publisher": "惠州市公安局（来源：中国警察网）",
+      "date": "2025-09-01",
+      "tag": "校园贷兼职",
+      "amount": "涉案",
+      "synopsis": "「日租一百」的租卡、租号兼职，实际是替诈骗团伙转移资金。",
+      "url": "https://gaj.huizhou.gov.cn/gkmlpt/content/5/5597/mpost_5597629.html"
+    },
+    {
+      "title": "暑期已至，谨防游戏诈骗",
+      "publisher": "信用中国（江苏无锡）",
+      "date": "2025-07-11",
+      "tag": "游戏账号",
+      "amount": "暑期高发",
+      "synopsis": "买卖账号、代练、担保商铺是暑期针对学生的三大高发场景。",
+      "url": "http://wuxicredit.wuxi.gov.cn/doc/2025/07/11/4611128.shtml"
+    }
+  ]
+}
