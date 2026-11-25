@@ -360,13 +360,6 @@ public class CarouselView extends FrameLayout {
         card.setPadding(Ui.dp(activity, 12), Ui.dp(activity, 9),
                 Ui.dp(activity, 12), Ui.dp(activity, 12));
 
-        // 顶部配图（口诀卡用 covers/tip*.jpg）
-        ImageView cover = coverView(p.cover, 900f / 360f);
-        if (cover != null) {
-            card.addView(coverBox(cover), new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, coverHeight(900, 360)));
-        }
-
         LinearLayout top = new LinearLayout(activity);
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
@@ -407,6 +400,9 @@ public class CarouselView extends FrameLayout {
         more.setPadding(0, Ui.dp(activity, 7), 0, 0);
         card.addView(more);
 
+        // 配图放在文字下方（先看口诀，再看画面）
+        addCoverBelow(card, p.cover, 900, 360);
+
         card.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -436,13 +432,6 @@ public class CarouselView extends FrameLayout {
         card.setBackgroundResource(R.drawable.px_panel);
         card.setPadding(Ui.dp(activity, 12), Ui.dp(activity, 9),
                 Ui.dp(activity, 12), Ui.dp(activity, 15));
-
-        // 顶部配图：assets/covers 里的真实照片（读不到就不显示，卡片照常能用）
-        ImageView cover = coverView(p.cover, 900f / 506f);
-        if (cover != null) {
-            card.addView(coverBox(cover), new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, coverHeight(900, 506)));
-        }
 
         // 顶行：左侧 tag 像素 chip，右侧「真实案例」角标（品牌红实心 + 白字）
         LinearLayout top = new LinearLayout(activity);
@@ -499,7 +488,22 @@ public class CarouselView extends FrameLayout {
         card.addView(synopsis, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
+        // 配图放在文字下方：先看标题与来源，再看画面
+        addCoverBelow(card, p.cover, 900, 506);
+
         return card;
+    }
+
+    /** 把配图加到卡片文字下方，上方留 8dp、下方留 2dp 呼吸空间 */
+    private void addCoverBelow(LinearLayout card, String coverPath, int imgW, int imgH) {
+        ImageView cover = coverView(coverPath, (float) imgW / imgH);
+        if (cover == null) {
+            return;
+        }
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, coverHeight(imgW, imgH));
+        lp.topMargin = Ui.dp(activity, 8);
+        card.addView(coverBox(cover), lp);
     }
 
     /**

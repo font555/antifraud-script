@@ -251,16 +251,16 @@ def tip_screen(title, items):
     tx(d, 34, 22, title, 28, INK)
     px(d, 34, 62, 140, 4, BRAND)
 
-    y = 88
+    y = 78
     for i, (key, sub, desc) in enumerate(items):
-        px(d, 34, y, 150, 76, BRAND if i % 2 == 0 else BRAND_DARK)
-        center(d, 34 + 75, y + 14, key, 34, WHITE)
-        tx(d, 198, y + 4, sub, 24, INK)
-        tx(d, 198, y + 38, desc, 16, (110, 104, 94))
-        y += 92
+        px(d, 34, y, 140, 68, BRAND if i % 2 == 0 else BRAND_DARK)
+        center(d, 34 + 70, y + 12, key, 30, WHITE)
+        tx(d, 190, y + 2, sub, 22, INK)
+        tx(d, 190, y + 32, desc, 15, (110, 104, 94))
+        y += 82
 
-    px(d, 0, TH - 34, W, 34, INK)
-    tx(d, 34, TH - 27, "反诈口诀 · 背下来能救命", 14, WHITE)
+    px(d, 0, TH - 34, W, 34, PAPER)
+    tx(d, 34, TH - 27, "", 14, WHITE)
     return img
 
 
