@@ -32,7 +32,7 @@ public class MineTabView extends LinearLayout {
     private final Activity a;
     private final TabHost host;
 
-    private TextView tvAvatar;
+    private AvatarView tvAvatar;
     private TextView tvNick;
     private TextView tvSummary;
     private TextView tvStatPlays;
@@ -81,9 +81,8 @@ public class MineTabView extends LinearLayout {
         int p = Ui.dp(a, 14);
         card.setPadding(p, p, p, p);
 
-        tvAvatar = Ui.text(a, AVATARS[0], 26, R.color.white);
-        tvAvatar.setGravity(Gravity.CENTER);
-        tvAvatar.setBackgroundResource(R.drawable.px_button); // 品牌红 + 深色描边
+        tvAvatar = new AvatarView(a);
+        tvAvatar.setAvatar(a.getColor(R.color.brand), 0);
         card.addView(tvAvatar, new LayoutParams(Ui.dp(a, 60), Ui.dp(a, 60)));
 
         LinearLayout info = new LinearLayout(a);
@@ -324,7 +323,7 @@ public class MineTabView extends LinearLayout {
         if (index < 0 || index >= AVATARS.length) {
             index = 0;
         }
-        tvAvatar.setText(AVATARS[index]);
+        tvAvatar.setAvatar(a.getColor(R.color.brand), index);
         tvNick.setText(UserStore.nickname(a));
         tvSummary.setText("已读 " + plays + " 本 · 累计损失 ¥" + Ui.money(loss));
         tvStatPlays.setText(plays + " 本");

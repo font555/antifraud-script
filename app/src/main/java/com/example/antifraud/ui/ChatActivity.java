@@ -266,17 +266,10 @@ public class ChatActivity extends BaseActivity {
         return c;
     }
 
-    /** 像素风方形头像：色块 + 深色描边 + 首字 */
-    private TextView makeAvatar(String name, int color, boolean marginRight) {
-        TextView av = new PTextView(this);
-        av.setText(name == null || name.isEmpty() ? "?" : name.substring(0, 1));
-        av.setTextSize(11);
-        av.setGravity(Gravity.CENTER);
-        av.setTextColor(getColor(R.color.white));
-        GradientDrawable gd = new GradientDrawable();
-        gd.setColor(color);
-        gd.setStroke(Math.max(2, Ui.dp(this, 2)), getColor(R.color.border_dark));
-        av.setBackground(gd);
+    /** 像素风头像：Color 区分说话人，type 决定画哪个小家伙（学生/学霸/猫/兔/熊/星） */
+    private AvatarView makeAvatar(int color, int typeIndex, boolean marginRight) {
+        AvatarView av = new AvatarView(this);
+        av.setAvatar(color, typeIndex);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(this, 30), Ui.dp(this, 30));
         if (marginRight) {
             lp.rightMargin = Ui.dp(this, 8);
@@ -285,6 +278,12 @@ public class ChatActivity extends BaseActivity {
         }
         av.setLayoutParams(lp);
         return av;
+    }
+
+    /** 用名字稳定地映射到一个头像形象（同一个人每局都是同一张脸） */
+    private int speakerType(String name) {
+        String key = (name == null || name.isEmpty()) ? "?" : name;
+        return Math.abs(key.hashCode()) % 6;
     }
     /** "对方正在输入"的像素小气泡 */
     private View makeTyping(String speaker) {
@@ -296,7 +295,7 @@ public class ChatActivity extends BaseActivity {
         rlp.bottomMargin = Ui.dp(this, 8);
         row.setLayoutParams(rlp);
 
-        row.addView(makeAvatar(speaker, colorForSpeaker(speaker), true));
+        row.addView(makeAvatar(colorForSpeaker(speaker), speakerType(speaker), true));
 
         LinearLayout bubble = new LinearLayout(this);
         bubble.setOrientation(LinearLayout.VERTICAL);
@@ -398,16 +397,13 @@ public class ChatActivity extends BaseActivity {
 
         // 对方消息左侧带彩色头像；自己的消息右侧带品牌色头像
         if (kind == 0) {
-            row.addView(makeAvatar(speaker, colorForSpeaker(speaker), true));
+            row.addView(makeAvatar(colorForSpeaker(speaker), speakerType(speaker), true));
         }
 
         row.addView(bubble);
 
         if (kind == 1) {
-            int avIndex = UserStore.avatar(this);
-            String glyph = avIndex >= 0 && avIndex < MainActivity.AVATARS.length
-                    ? MainActivity.AVATARS[avIndex] : "我";
-            row.addView(makeAvatar(glyph, getColor(R.color.brand), false));
+            row.addView(makeAvatar(getColor(R.color.brand), UserStore.avatar(this), false));
         }
 
         llMessages.addView(row);

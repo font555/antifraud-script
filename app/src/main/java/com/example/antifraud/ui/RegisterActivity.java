@@ -61,16 +61,20 @@ public class RegisterActivity extends BaseActivity {
         llAvatars.removeAllViews();
         for (int i = 0; i < MainActivity.AVATARS.length; i++) {
             final int idx = i;
-            TextView tv = new PTextView(this);
-            tv.setText(MainActivity.AVATARS[i]);
-            tv.setTextSize(21);
-            tv.setGravity(Gravity.CENTER);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 44), 1f);
+            // 外层容器负责"选中"高亮，里面是像素头像
+            LinearLayout box = new LinearLayout(this);
+            box.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 52), 1f);
             lp.setMargins(Ui.dp(this, 3), 0, Ui.dp(this, 3), 0);
-            tv.setLayoutParams(lp);
-            tv.setTextColor(getColor(idx == selected ? R.color.white : R.color.ink));
-            tv.setBackgroundResource(idx == selected ? R.drawable.px_button : R.drawable.px_paper);
-            tv.setOnClickListener(new View.OnClickListener() {
+            box.setLayoutParams(lp);
+            box.setPadding(Ui.dp(this, 3), Ui.dp(this, 3), Ui.dp(this, 3), Ui.dp(this, 3));
+            box.setBackgroundResource(idx == selected ? R.drawable.px_button : R.drawable.px_paper);
+
+            AvatarView av = new AvatarView(this);
+            av.setAvatar(avatarColor(idx), idx);
+            box.addView(av, new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));
+
+            box.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(final View v) {
                     selected = idx;
@@ -84,8 +88,16 @@ public class RegisterActivity extends BaseActivity {
                             }).start();
                 }
             });
-            llAvatars.addView(tv);
+            llAvatars.addView(box);
         }
+    }
+
+    /** 六个头像的底色，和聊天页的配色保持一致 */
+    private int avatarColor(int index) {
+        int[] colors = {
+                0xFFE4572E, 0xFF3F7FA6, 0xFFE9B44C, 0xFF4E7B3A, 0xFF8E5B8F, 0xFF3C7A89
+        };
+        return colors[Math.max(0, index) % colors.length];
     }
 
     private void submit() {
