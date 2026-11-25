@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -78,9 +79,17 @@ public class GuideOverlay extends FrameLayout {
         super(c);
         setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        // 整层吞掉触摸：点空白处既不会推进、也不会误触下面的页面，只能点「下一步」
+        setClickable(true);
+        setOnTouchListener(new OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                return true;
+            }
+        });
 
         spotlight = new SpotlightView(c);
-        // 遮罩不响应点击：只有「下一步」「跳过」能推进，避免手一偏就跳步
+        // 遮罩不响应点击：只有「下一步」能推进，避免手一偏就跳步
         addView(spotlight, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
         tip = buildTip();
@@ -99,7 +108,7 @@ public class GuideOverlay extends FrameLayout {
         skipBar.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish();
+                confirmSkip();
             }
         });
         LayoutParams slp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
@@ -199,6 +208,25 @@ public class GuideOverlay extends FrameLayout {
                 }
             }
         }, STEP_TIMEOUT_MS);
+    }
+
+    /** 跳过前先确认，避免误触把引导关掉；引导结束后可在「我的 → 新手引导」重看 */
+    private void confirmSkip() {
+        if (finished) {
+            return;
+        }
+        final Context ctx = getContext();
+        new android.app.AlertDialog.Builder(ctx)
+                .setTitle("跳过新手引导？")
+                .setMessage("跳过之后，可以在「我的 → 新手引导」里再看一遍。")
+                .setPositiveButton("跳过", new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        finish();
+                    }
+                })
+                .setNegativeButton("继续看", null)
+                .show();
     }
 
     private void nextStep() {
