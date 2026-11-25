@@ -401,7 +401,7 @@ public class CarouselView extends FrameLayout {
         card.addView(more);
 
         // 配图放在文字下方（先看口诀，再看画面）
-        addCoverBelow(card, p.cover, 900, 360);
+        addCoverBelow(card, p.cover, 900, 330);
 
         card.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -489,7 +489,7 @@ public class CarouselView extends FrameLayout {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         // 配图放在文字下方：先看标题与来源，再看画面
-        addCoverBelow(card, p.cover, 900, 506);
+        addCoverBelow(card, p.cover, 900, 430);
 
         return card;
     }
