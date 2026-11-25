@@ -5,7 +5,7 @@
   "minutes": "10-15",
   "intro": "二手平台上有人 5000 元出全皮账号，比官方便宜一大截。他说平台抽成太高，让你私下转账……",
   "startNode": "n1",
-  "stageCount": 5,
+  "stageCount": 6,
   "referenceLoss": 50400,
   "referenceNote": "真实案件：四川内江高中生王同学，两个多月被连环套骗走 5 万余元（人民网四川频道 2025-08-22，据四川省公安厅「熊猫反诈」公布）",
   "sources": [
@@ -681,7 +681,7 @@
     "d1": {
       "id": "d1",
       "speaker": "系统",
-      "stage": 3,
+      "stage": 6,
       "stageName": "先存证",
       "messages": [
         "停下来之后，第一件事是把证据留住。",
@@ -753,7 +753,7 @@
     "d3": {
       "id": "d3",
       "speaker": "系统",
-      "stage": 4,
+      "stage": 6,
       "stageName": "报警",
       "messages": [
         "第三步：打 110 报案。",
@@ -789,7 +789,7 @@
     "d4": {
       "id": "d4",
       "speaker": "系统",
-      "stage": 5,
+      "stage": 6,
       "stageName": "96110",
       "messages": [
         "第四步：打 96110 咨询。",
@@ -825,7 +825,7 @@
     "d5": {
       "id": "d5",
       "speaker": "系统",
-      "stage": 5,
+      "stage": 6,
       "stageName": "反诈APP",
       "messages": [
         "最后一步：国家反诈中心 APP。",

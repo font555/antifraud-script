@@ -77,6 +77,86 @@ public class SourcesActivity extends BaseActivity {
         if (index == 0) {
             box.addView(Ui.text(this, "还没有登记来源", 14, R.color.warn_red));
         }
+
+        addImageCredits(box);
+    }
+
+    /**
+     * 配图来源：首页轮播用的是 Burst（Shopify 免费图库）照片，
+     * 许可允许免费商用、不强制署名；这里仍然把摄影师和原页面列出来，
+     * 方便评委核查，也避免版权争议。
+     */
+    private void addImageCredits(LinearLayout box) {
+        TextView title = Ui.text(this, "配图来源（Burst 免费图库 · 可免费商用）", 15, R.color.ink);
+        title.setPadding(0, Ui.dp(this, 22), 0, Ui.dp(this, 6));
+        box.addView(title);
+
+        TextView note = Ui.text(this,
+                "Burst Some Rights Reserved 许可：免费用于商业与非商业用途、无需署名，"
+                        + "但不得把照片本身作为图库素材再转售。点条目可复制原页面链接。",
+                10, R.color.ink_hint);
+        note.setLineSpacing(Ui.dp(this, 3), 1f);
+        note.setPadding(0, 0, 0, Ui.dp(this, 8));
+        box.addView(note);
+
+        String json = null;
+        try {
+            java.io.InputStream in = getAssets().open("data/covers.json");
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                out.write(buf, 0, n);
+            }
+            in.close();
+            json = new String(out.toByteArray(), "UTF-8");
+        } catch (Exception e) {
+            note.setText(note.getText() + "\n（配图清单读取失败）");
+            return;
+        }
+
+        try {
+            org.json.JSONArray arr = new org.json.JSONObject(json).optJSONArray("covers");
+            if (arr == null) {
+                return;
+            }
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject o = arr.optJSONObject(i);
+                if (o == null) {
+                    continue;
+                }
+                final String source = o.optString("source", "");
+                String line = o.optString("topic", "") + " · 摄影："
+                        + o.optString("author", "") + "\n" + source;
+                TextView row = Ui.text(this, line, 11, R.color.ink_secondary);
+                row.setLineSpacing(Ui.dp(this, 3), 1f);
+                row.setPadding(Ui.dp(this, 12), Ui.dp(this, 10),
+                        Ui.dp(this, 12), Ui.dp(this, 10));
+                row.setBackgroundResource(R.drawable.px_panel);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                lp.bottomMargin = Ui.dp(this, 8);
+                row.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        copyText(source);
+                    }
+                });
+                box.addView(row, lp);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void copyText(String text) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (cm != null) {
+            cm.setPrimaryClip(ClipData.newPlainText("source", text));
+            Toast.makeText(this, "已复制图片原页面链接", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private View buildSource(int index, final CaseSource c) {

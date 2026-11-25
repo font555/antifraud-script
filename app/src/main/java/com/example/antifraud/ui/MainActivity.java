@@ -96,8 +96,12 @@ public class MainActivity extends BaseActivity implements TabHost {
         if (v.getParent() instanceof ViewGroup) {
             ((ViewGroup) v.getParent()).removeView(v);
         }
+        // 切 Tab 时淡入 + 轻微上浮，避免页面“闪”一下直接换掉
+        v.setAlpha(0f);
+        v.setTranslationY(Ui.dp(this, 10));
         container.addView(v, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        v.animate().alpha(1f).translationY(0f).setDuration(180).start();
         tabBar.setSelected(index);
         refreshCurrent();
     }
@@ -295,12 +299,17 @@ public class MainActivity extends BaseActivity implements TabHost {
                 }
                 final GuideOverlay overlay = new GuideOverlay(MainActivity.this);
                 guide = overlay;
+                // 「跳过引导」放在底部 Tab 栏上方，不压住导航
+                overlay.setBottomInsetDp(64);
                 overlay.setStepPreparer(new GuideOverlay.OnStepPrepare() {
                     @Override
                     public void onPrepare(int index) {
-                        // 第 4 步在剧本页、第 5 步在我的页，先切 Tab 再高亮
-                        if (index == 3) {
+                        // 0/1 在首页；2/3 在剧本页；4 在我的页
+                        if (index == 2 || index == 3) {
                             switchTab(1);
+                            if (index == 2 && scriptsView != null) {
+                                scriptsView.resetForGuide();
+                            }
                         } else if (index == 4) {
                             switchTab(2);
                         } else {
@@ -308,14 +317,14 @@ public class MainActivity extends BaseActivity implements TabHost {
                         }
                     }
                 });
-                overlay.addStep(homeView == null ? null : homeView.headerView(), "这里是你的战绩",
-                        "已读几本、在剧情里一共损失了多少钱，都记在这台手机上，不联网。");
                 overlay.addStep(homeView == null ? null : homeView.carouselView(), "每天一个真实案例",
-                        "左右滑动可以看更多，点开能复制原文链接，全部来自公开报道。");
+                        "左右滑动可以看更多；点开能复制原文链接，全部来自公开报道。");
                 overlay.addStep(homeView == null ? null : homeView.shelfView(), "从一本书开始",
                         "六本书对应六类骗局，点开封面会翻开，翻完直接带你去剧本页。");
+                overlay.addStep(scriptsView == null ? null : scriptsView.listView(), "这里是全部剧本",
+                        "17 本剧本都在这里，上面可以搜索和按骗局类型筛选，点一本就能开始。", 0.55f);
                 overlay.addStep(scriptsView == null ? null : scriptsView.fabButtonView(), "自己也能写剧本",
-                        "点右下角的加号：新建空白、套模板，或者导入同学发来的剧本。");
+                        "点搜索框右边的加号：新建空白、套模板，或者导入同学发来的剧本。");
                 overlay.addStep(mineView == null ? null : mineView.settingsRowView(), "觉得字累眼？",
                         "这里能换系统字体、调大字号，还有一个藏起来的运行日志。");
                 ((android.view.ViewGroup) content).addView(overlay);
@@ -325,6 +334,8 @@ public class MainActivity extends BaseActivity implements TabHost {
                         SettingsStore.setGuideDone(MainActivity.this);
                         guideShowing = false;
                         guide = null;
+                        // 引导结束回到首页，用户第一眼看到的是书架
+                        switchTab(0);
                         AppLog.i("GUIDE", "引导结束");
                     }
                 });

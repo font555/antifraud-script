@@ -132,15 +132,15 @@ public class HomeTabView extends LinearLayout {
 
         content = new LinearLayout(a);
         content.setOrientation(VERTICAL);
-        content.setPadding(Ui.dp(a, 16), Ui.dp(a, 8), Ui.dp(a, 16), Ui.dp(a, 22));
+        content.setPadding(Ui.dp(a, 16), Ui.dp(a, 8), Ui.dp(a, 16), Ui.dp(a, 18));
         scrollView.addView(content, new ScrollView.LayoutParams(
                 ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
 
         loadData();
-        buildHeader();
         buildCarousel();
         buildShelf();
-        buildRules();
+        // 首页只保留「轮播 + 书架」两块；顶部战绩条与底部口诀卡已删除，
+        // 之前的房间场景装饰也按反馈删掉了。
     }
 
     // ---------------- 对外刷新 ----------------
@@ -156,7 +156,7 @@ public class HomeTabView extends LinearLayout {
 
     /** 顶部问候条（MainActivity 的引导第 1 步） */
     public View headerView() {
-        return headerCard;
+        return null;   // 顶部问候条已删除
     }
 
     /** 真实案例轮播（引导第 2 步） */
@@ -219,6 +219,9 @@ public class HomeTabView extends LinearLayout {
     }
 
     private void updateHeader() {
+        if (tvHello == null || tvReads == null || tvLoss == null) {
+            return;   // 顶部条已移除
+        }
         if (tvHello == null) {
             return;
         }
@@ -234,9 +237,9 @@ public class HomeTabView extends LinearLayout {
     private void buildCarousel() {
         carousel = new CarouselView(activity);
         carousel.setHost(host);
-        // 高约 150dp，宽度 match_parent；左右 16dp 由 content 的 padding 留出
+        // 高 330dp（16:9 配图按比例自适应 + 文字），宽度 match_parent；左右 16dp 由 content 的 padding 留出
         carousel.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(activity, 150)));
+                LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(activity, 330)));
         content.addView(carousel);
     }
 
@@ -327,6 +330,20 @@ public class HomeTabView extends LinearLayout {
             @Override
             public void onClick(View v) {
                 openBook(cover, cat);
+            }
+        });
+        // 按下时书本轻微缩小，松手回弹，给点击一点“手感”
+        cell.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, android.view.MotionEvent event) {
+                int action = event.getActionMasked();
+                if (action == android.view.MotionEvent.ACTION_DOWN) {
+                    v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(80).start();
+                } else if (action == android.view.MotionEvent.ACTION_UP
+                        || action == android.view.MotionEvent.ACTION_CANCEL) {
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(140).start();
+                }
+                return false;
             }
         });
         return cell;
@@ -570,12 +587,44 @@ public class HomeTabView extends LinearLayout {
         LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) card.getLayoutParams();
         lp.topMargin = Ui.dp(activity, 6);
         lp.bottomMargin = Ui.dp(activity, 4);
-        card.addView(Ui.text(activity, "反诈四步口诀", 13, R.color.brand));
-        TextView body = Ui.text(activity, "不给钱 · 不转账 · 不点链接 · 先核实", 11,
-                R.color.ink_secondary);
-        body.setPadding(0, Ui.dp(activity, 8), 0, 0);
-        body.setLineSpacing(Ui.dp(activity, 3), 1f);
-        card.addView(body);
+
+        LinearLayout head = new LinearLayout(activity);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        head.addView(Ui.text(activity, "反诈口诀 · 8 个字", 13, R.color.brand));
+        View spacer = new View(activity);
+        head.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
+        head.addView(Ui.text(activity, "点开看解释 →", 9, R.color.brand_deep));
+        card.addView(head);
+
+        java.util.List<Tips.Tip> tips = Tips.load(activity);
+        // 两行 × 四句：码链钱平 / 话急警证
+        for (int row = 0; row < 2; row++) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = row * 4; i < Math.min(row * 4 + 4, tips.size()); i++) {
+                if (sb.length() > 0) {
+                    sb.append(" · ");
+                }
+                sb.append("「").append(tips.get(i).key).append("」").append(tips.get(i).sub);
+            }
+            TextView line = Ui.text(activity, sb.toString(), 11, R.color.ink_secondary);
+            line.setPadding(0, Ui.dp(activity, 8), 0, 0);
+            line.setLineSpacing(Ui.dp(activity, 3), 1f);
+            card.addView(line);
+        }
+
+        TextView hint = Ui.text(activity, "验证码不给 · 陌生链接不点 · 先垫钱不转 · 交易不离平台", 9,
+                R.color.ink_hint);
+        hint.setPadding(0, Ui.dp(activity, 8), 0, 0);
+        hint.setLineSpacing(Ui.dp(activity, 2), 1f);
+        card.addView(hint);
+
+        card.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Tips.showAll(activity);
+            }
+        });
         content.addView(card);
     }
 

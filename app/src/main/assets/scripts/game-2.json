@@ -6,7 +6,7 @@
   "minutes": "8-12",
   "intro": "你练了两年的账号挂出去卖 800，一个买家秒回，出 1000，还说走「担保商铺」更安全。从他发来「付款成功」截图那一刻起，套路就开始了……",
   "startNode": "m1",
-  "stageCount": 5,
+  "stageCount": 6,
   "referenceLoss": 20000,
   "referenceNote": "真实案件：大学生梁某在网上挂卖游戏账号，被引导到指定平台交易，提现时账户被冻结，按对方提示不断充值解冻，充到 2 万元才发现被骗（公安部刑侦局通报，合肥网 2025-07-09 转载）",
   "sources": [
@@ -553,7 +553,7 @@
     "d1": {
       "id": "d1",
       "speaker": "系统",
-      "stage": 3,
+      "stage": 6,
       "stageName": "先存证",
       "messages": [
         "骗子失联了，先别慌，第一件事是保住证据。",
@@ -625,7 +625,7 @@
     "d3": {
       "id": "d3",
       "speaker": "系统",
-      "stage": 4,
+      "stage": 6,
       "stageName": "报警",
       "messages": [
         "第三步：打 110 报案。",
@@ -661,7 +661,7 @@
     "d4": {
       "id": "d4",
       "speaker": "系统",
-      "stage": 5,
+      "stage": 6,
       "stageName": "96110",
       "messages": [
         "第四步：打 96110 咨询。",
@@ -697,7 +697,7 @@
     "d5": {
       "id": "d5",
       "speaker": "系统",
-      "stage": 5,
+      "stage": 6,
       "stageName": "反诈APP",
       "messages": [
         "最后一步：国家反诈中心 APP。",

@@ -25,6 +25,7 @@ public class BottomTabBar extends LinearLayout {
     private final TabIconView[] icons = new TabIconView[3];
     private final TextView[] labels = new TextView[3];
     private int selected = 0;
+    private int lastAnimated = -1;
     private OnTabSelected listener;
 
     public BottomTabBar(Context c) {
@@ -106,6 +107,21 @@ public class BottomTabBar extends LinearLayout {
             boolean on = i == selected;
             icons[i].setActive(on);
             labels[i].setTextColor(c.getColor(on ? R.color.brand : R.color.ink_hint));
+        }
+        // 选中的图标弹一下，给点击一个明确反馈
+        if (selected != lastAnimated) {
+            lastAnimated = selected;
+            final TabIconView icon = icons[selected];
+            icon.animate().cancel();
+            icon.setScaleX(1f);
+            icon.setScaleY(1f);
+            icon.animate().scaleX(1.2f).scaleY(1.2f).setDuration(110)
+                    .withEndAction(new Runnable() {
+                        @Override
+                        public void run() {
+                            icon.animate().scaleX(1f).scaleY(1f).setDuration(150).start();
+                        }
+                    }).start();
         }
     }
 

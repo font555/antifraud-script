@@ -1,0 +1,79 @@
+{
+  "note": "首页轮播配图全部来自 Shopify 的免费图库 Burst，可免费用于商业与非商业用途、无需署名（Burst Some Rights Reserved，不得把照片本身再当作图库素材转售）；这里仍逐张标注摄影师与原始页面，方便核查，也避免任何版权争议。",
+  "license": "Burst Some Rights Reserved",
+  "licenseUrl": "https://burst.shopify.com/stock-photos/licenses/shopify-some-rights-reserved",
+  "covers": [
+    {
+      "file": "covers/case0.jpg",
+      "slug": "video-game-controller-front",
+      "title": "Video Game Controller Front",
+      "author": "Matthew Henry",
+      "source": "https://burst.shopify.com/photos/video-game-controller-front",
+      "topic": "游戏账号诈骗（示意图：游戏手柄）"
+    },
+    {
+      "file": "covers/case1.jpg",
+      "slug": "video-conference-meeting",
+      "title": "Video Conference Meeting",
+      "author": "Sarah Pflug",
+      "source": "https://burst.shopify.com/photos/video-conference-meeting",
+      "topic": "AI 换脸诈骗（示意图：视频通话）"
+    },
+    {
+      "file": "covers/case2.jpg",
+      "slug": "man-woman-video-chat",
+      "title": "Man Woman Video Chat",
+      "author": "Matthew Henry",
+      "source": "https://burst.shopify.com/photos/man-woman-video-chat",
+      "topic": "AI 换脸 / 熟人视频（示意图：视频里的“熟人”）"
+    },
+    {
+      "file": "covers/case3.jpg",
+      "slug": "boxes-for-shipping",
+      "title": "Boxes For Shipping",
+      "author": "Matthew Henry",
+      "source": "https://burst.shopify.com/photos/boxes-for-shipping",
+      "topic": "刷单返利诈骗（示意图：订单/包裹）"
+    },
+    {
+      "file": "covers/case4.jpg",
+      "slug": "student-works-on-laptop",
+      "title": "Student Works On Laptop",
+      "author": "Adrien Olichon",
+      "source": "https://burst.shopify.com/photos/student-works-on-laptop",
+      "topic": "校园贷 / 兼职诈骗（示意图：学生与电脑）"
+    },
+    {
+      "file": "covers/case5.jpg",
+      "slug": "gaming-controller-against-a-black-background",
+      "title": "Gaming Controller Against A Black Background",
+      "author": "Dave Salter",
+      "source": "https://burst.shopify.com/photos/gaming-controller-against-a-black-background",
+      "topic": "游戏账号诈骗（示意图：游戏手柄）"
+    },
+    {
+      "file": "covers/tip0.jpg",
+      "slug": "combination-lock-on-fence",
+      "title": "Combination Lock On Fence",
+      "author": "Matthew Henry",
+      "source": "https://burst.shopify.com/photos/combination-lock-on-fence",
+      "topic": "反诈口诀 · 码/链/钱"
+    },
+    {
+      "file": "covers/tip1.jpg",
+      "slug": "woman-smiles-and-holds-a-cellphone-to-her-ear",
+      "title": "Woman Smiles And Holds A Cellphone To Her Ear",
+      "author": "Avelino Calvar Martinez",
+      "source": "https://burst.shopify.com/photos/woman-smiles-and-holds-a-cellphone-to-her-ear",
+      "topic": "反诈口诀 · 平/话/急"
+    },
+    {
+      "file": "covers/tip2.jpg",
+      "slug": "hands-hold-and-write-in-a-yellow-notebook",
+      "title": "Hands Hold And Write In A Yellow Notebook",
+      "author": "Farah",
+      "source": "https://burst.shopify.com/photos/hands-hold-and-write-in-a-yellow-notebook",
+      "topic": "反诈口诀 · 警/证"
+    }
+  ]
+}

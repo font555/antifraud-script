@@ -547,3 +547,30 @@
    - 用于：n3 屏幕共享的风险与「手机被远程控制」情节；s1/s2 的处置步骤：拔卡、断网、挂失银行卡、及时报警；「退款理赔」陌生来电不要轻信的提示
    - 改编说明：用于屏幕共享风险与处置建议；原文案中人物信息未使用
 
+
+
+---
+
+## 配图来源（首页轮播）
+
+首页轮播（6 张案例卡 + 3 张口诀卡）的 9 张配图全部来自 **Burst**（Shopify 官方免费图库），采用 **Burst Some Rights Reserved** 许可：
+
+- 可免费用于商业与非商业用途；
+- **不强制署名**，但我们仍逐张标注摄影师与原始页面（App 内「我的 → 真实案例来源库」页面底部也有同样清单）；
+- 禁止把照片本身作为图库素材再打包转售（我们只是嵌入 App 使用，不转售）。
+
+| # | 用在哪 | 摄影师 | 原始页面 |
+|---|---|---|---|
+| 1 | 案例 · 游戏账号（示意图：游戏手柄） | Matthew Henry | https://burst.shopify.com/photos/video-game-controller-front |
+| 2 | 案例 · AI 换脸（示意图：视频通话） | Sarah Pflug | https://burst.shopify.com/photos/video-conference-meeting |
+| 3 | 案例 · AI 换脸 / 熟人视频（示意图：视频里的“熟人”） | Matthew Henry | https://burst.shopify.com/photos/man-woman-video-chat |
+| 4 | 案例 · 刷单返利（示意图：订单/包裹） | Matthew Henry | https://burst.shopify.com/photos/boxes-for-shipping |
+| 5 | 案例 · 校园贷 / 兼职（示意图：学生与电脑） | Adrien Olichon | https://burst.shopify.com/photos/student-works-on-laptop |
+| 6 | 案例 · 游戏账号（第二例，示意图：游戏手柄） | Dave Salter | https://burst.shopify.com/photos/gaming-controller-against-a-black-background |
+| 7 | 口诀卡 · 码/链/钱（示意图：挂锁） | Matthew Henry | https://burst.shopify.com/photos/combination-lock-on-fence |
+| 8 | 口诀卡 · 平/话/急（示意图：接电话） | Avelino Calvar Martinez | https://burst.shopify.com/photos/woman-smiles-and-holds-a-cellphone-to-her-ear |
+| 9 | 口诀卡 · 警/证（示意图：记笔记） | Farah | https://burst.shopify.com/photos/hands-hold-and-write-in-a-yellow-notebook |
+
+许可原文：https://burst.shopify.com/stock-photos/licenses/shopify-some-rights-reserved
+
+> 说明：配图都是**示意图**（卡片图片右上角有「示意图」角标），与具体案件无直接关系，只用来提示该骗局的大致场景；案件事实、金额、话术均来自上表所列**新闻报道原文**，不依赖配图。图片在打包前统一按 **16:9（900×506）** 裁切（口诀卡为 900×360），App 内按比例自适应显示、不二次裁切，并按 JPEG 82 压缩、不保留原始 EXIF。

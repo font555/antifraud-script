@@ -212,7 +212,7 @@ public class MineTabView extends LinearLayout {
         });
         list.addView(guideRow);
 
-        LinearLayout aboutRow = settingRow("关于", "v3.0 · 教学演示作品");
+        LinearLayout aboutRow = settingRow("关于", "v" + appVersion() + " · 教学演示作品");
         setupAboutRow(aboutRow);
         list.addView(aboutRow);
 
@@ -220,6 +220,16 @@ public class MineTabView extends LinearLayout {
     }
 
     /** 一行设置：左侧 12sp 标题，右侧 9sp 灰色当前值；大字号下右侧单行省略 */
+    /** 读取当前安装包的版本号，避免页面里写死的版本过期 */
+    private String appVersion() {
+        try {
+            return getContext().getPackageManager()
+                    .getPackageInfo(getContext().getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "1.0";
+        }
+    }
+
     private LinearLayout settingRow(String title, String value) {
         LinearLayout row = new LinearLayout(a);
         row.setOrientation(HORIZONTAL);

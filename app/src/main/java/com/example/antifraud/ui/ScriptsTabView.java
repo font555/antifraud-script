@@ -62,7 +62,7 @@ public class ScriptsTabView extends FrameLayout {
     private TextView chipAll;
     private ScrollView scrollView;
     private LinearLayout listBox;
-    private View fabView;
+    private View plusButton;
 
     /** 当前搜索词（已 trim，转小写后匹配） */
     private String query = "";
@@ -83,7 +83,6 @@ public class ScriptsTabView extends FrameLayout {
         }
 
         buildRoot();
-        buildFab();
         updateChipStyles();
         refresh();
     }
@@ -109,9 +108,9 @@ public class ScriptsTabView extends FrameLayout {
         scrollView = new ScrollView(activity);
         scrollView.setVerticalScrollBarEnabled(false);
         scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        // 底部留白给 FAB，卡片滚到底时不会压在加号下面
+        // 加号在列表上方的搜索行里，不再悬浮在列表上：列表底部不需要任何留白
         scrollView.setPadding(Ui.dp(activity, 14), Ui.dp(activity, 8),
-                Ui.dp(activity, 14), Ui.dp(activity, LIST_BOTTOM_PAD_DP));
+                Ui.dp(activity, 14), Ui.dp(activity, 10));
 
         listBox = new LinearLayout(activity);
         listBox.setOrientation(LinearLayout.VERTICAL);
@@ -124,6 +123,29 @@ public class ScriptsTabView extends FrameLayout {
 
         addView(root, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+    }
+
+    /** 新手引导用：剧本列表所在的可视区域 */
+    public View listView() {
+        return scrollView;
+    }
+
+    /** 新手引导用：把列表滚回顶部 */
+    public void scrollListToTop() {
+        if (scrollView != null) {
+            scrollView.scrollTo(0, 0);
+        }
+    }
+
+    /** 新手引导用：清掉筛选与搜索，让列表显示全部剧本，高亮区不会一片空白 */
+    public void resetForGuide() {
+        selectedCategory = null;
+        if (etSearch != null) {
+            etSearch.setText("");
+        }
+        updateChipStyles();
+        rebuildList();
+        scrollListToTop();
     }
 
     /** 顶部搜索框：背景 px_input，输入时实时重建列表 */
@@ -157,10 +179,25 @@ public class ScriptsTabView extends FrameLayout {
             }
         });
 
+        // 搜索框 + 右侧加号放在同一行：加号在列表上方，完全不遮挡剧本
+        LinearLayout searchRow = new LinearLayout(activity);
+        searchRow.setOrientation(LinearLayout.HORIZONTAL);
+        searchRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        searchRow.addView(etSearch, searchLp);
+
+        plusButton = buildPlusButton();
+        LinearLayout.LayoutParams plusLp = new LinearLayout.LayoutParams(
+                Ui.dp(activity, 44), Ui.dp(activity, 44));
+        plusLp.leftMargin = Ui.dp(activity, 8);
+        searchRow.addView(plusButton, plusLp);
+
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.topMargin = Ui.dp(activity, 12);
-        header.addView(etSearch, lp);
+        header.addView(searchRow, lp);
     }
 
     /** 分类筛选 chips：全部 + 六个分类，超出屏幕宽度可横向滑动 */
@@ -186,6 +223,7 @@ public class ScriptsTabView extends FrameLayout {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.topMargin = Ui.dp(activity, 8);
+        lp.bottomMargin = Ui.dp(activity, 6);
         header.addView(hsv, lp);
     }
 
@@ -237,41 +275,48 @@ public class ScriptsTabView extends FrameLayout {
         chip.setTextColor(activity.getColor(selected ? R.color.white : R.color.ink));
     }
 
-    /** 右下角圆形加号按钮（Canvas 自绘，不新增 drawable） */
-    private void buildFab() {
-        fabView = new FabView(activity);
-        fabView.setContentDescription("新建或导入剧本");
-        fabView.setOnClickListener(new View.OnClickListener() {
+    /** 搜索行右侧的圆形「＋」按钮：在列表上方，不遮挡剧本 */
+    private View buildPlusButton() {
+        TextView plus = new PTextView(activity);
+        plus.setText("＋");
+        plus.setTextSize(20);
+        plus.setGravity(Gravity.CENTER);
+        plus.setTextColor(activity.getColor(R.color.white));
+        plus.setContentDescription("新建或导入剧本");
+        plus.setBackground(roundButton(activity.getColor(R.color.brand)));
+        plus.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 showFloatingMenu();
             }
         });
-        // 按下时略微变淡，给一点触感反馈
-        fabView.setOnTouchListener(new View.OnTouchListener() {
+        plus.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 int action = event.getActionMasked();
                 if (action == MotionEvent.ACTION_DOWN) {
-                    v.setAlpha(0.72f);
+                    v.animate().scaleX(0.92f).scaleY(0.92f).setDuration(70).start();
                 } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                    v.setAlpha(1f);
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(120).start();
                 }
                 return false;
             }
         });
-
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                Ui.dp(activity, 56), Ui.dp(activity, 56));
-        lp.gravity = Gravity.BOTTOM | Gravity.END;
-        lp.rightMargin = Ui.dp(activity, 20);
-        lp.bottomMargin = Ui.dp(activity, 20);
-        addView(fabView, lp);
+        return plus;
     }
 
-    /** 新手引导高亮用：右下角加号按钮 */
+    /** 圆形像素按钮背景：直角描边 + 实心圆 */
+    private GradientDrawable roundButton(int color) {
+        GradientDrawable gd = new GradientDrawable();
+        gd.setShape(GradientDrawable.OVAL);
+        gd.setColor(color);
+        gd.setStroke(Ui.dp(activity, 2), activity.getColor(R.color.border_dark));
+        return gd;
+    }
+
+    /** 新手引导高亮用：筛选行右侧的加号按钮 */
     public View fabButtonView() {
-        return fabView;
+        return plusButton;
     }
 
     // ---------------- 对外刷新 / 筛选 ----------------
@@ -342,8 +387,18 @@ public class ScriptsTabView extends FrameLayout {
             return;
         }
 
+        int index = 0;
         for (Script s : filtered) {
-            listBox.addView(buildCard(s));
+            View card = buildCard(s);
+            // 逐条淡入 + 轻微上浮：列表切换时不会“啪”地整块出现
+            card.setAlpha(0f);
+            card.setTranslationY(Ui.dp(activity, 12));
+            card.animate().alpha(1f).translationY(0f)
+                    .setDuration(200)
+                    .setStartDelay(Math.min(index, 9) * 26L)
+                    .start();
+            listBox.addView(card);
+            index++;
         }
     }
 

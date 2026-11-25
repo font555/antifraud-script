@@ -10,8 +10,8 @@ ROOT = r"C:\Users\Lecoo\Desktop\antifraud-script"
 REPO = "font555/antifraud-script"
 API = "https://api.github.com"
 UPLOADS = "https://uploads.github.com"
-APK = os.path.join(ROOT, "dist", "antifraud-v3.0-debug.apk")
-TAG = "v3.0"
+APK = os.path.join(ROOT, "dist", "antifraud-v3.2-debug.apk")
+TAG = "v3.2"
 
 
 def token():
@@ -49,7 +49,7 @@ def call(method, url, data=None, raw=None, attempts=3, timeout=300):
     raise SystemExit("失败: " + str(last))
 
 
-body = """## 反诈剧本杀 v2.0
+body = """## 反诈剧本杀 v3.2
 
 **像素风反诈教育应用**：把真实诈骗案件改编成可以"走一遍"的剧本，每一步都有损失账本，
 结束后逐节点复盘，并对照公开报道原文。
@@ -74,7 +74,7 @@ body = """## 反诈剧本杀 v2.0
 print("创建 release…")
 rel = call("POST", f"{API}/repos/{REPO}/releases", {
     "tag_name": TAG,
-    "name": "反诈剧本杀 v2.0",
+    "name": "反诈剧本杀 v3.2",
     "body": body,
     "draft": False,
     "prerelease": False,
@@ -85,7 +85,7 @@ size = os.path.getsize(APK)
 print("上传 APK:", round(size / 1024 / 1024, 2), "MB")
 data = open(APK, "rb").read()
 asset = call("POST",
-             f"{UPLOADS}/repos/{REPO}/releases/{rel['id']}/assets?name=antifraud-v3.0-debug.apk",
+             f"{UPLOADS}/repos/{REPO}/releases/{rel['id']}/assets?name=antifraud-v3.2-debug.apk",
              raw=data)
 print("asset:", asset["browser_download_url"])
 print("RELEASE_URL:", rel["html_url"])

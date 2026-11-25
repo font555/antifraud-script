@@ -1,22 +1,17 @@
 package com.example.antifraud.ui;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.example.antifraud.R;
 import com.example.antifraud.engine.SettingsStore;
-import com.example.antifraud.engine.UserStore;
 
 /**
- * 设置页：字体样式（像素体 / 系统体）、字号、清除本地记录。
+ * 字体与字号页：只放「字体样式」和「字号大小」两件事。\n * 清除记录、关于等入口都在「我的」页，这里不再重复。
  * 全部存在本机 SharedPreferences，不联网。
  */
 public class SettingsActivity extends BaseActivity {
@@ -48,7 +43,7 @@ public class SettingsActivity extends BaseActivity {
         LinearLayout root = findViewById(R.id.ll_root);
         root.removeAllViews();
 
-        root.addView(Ui.text(this, "设置", 22, R.color.ink));
+        root.addView(Ui.text(this, "字体与字号", 22, R.color.ink));
 
         // ---- 字体样式 ----
         LinearLayout fontCard = Ui.card(this, 14, 12);
@@ -89,47 +84,6 @@ public class SettingsActivity extends BaseActivity {
         sizeHint.setLineSpacing(Ui.dp(this, 3), 1f);
         sizeCard.addView(sizeHint);
         root.addView(sizeCard);
-
-        // ---- 清除本地记录 ----
-        LinearLayout dataCard = Ui.card(this, 14, 12);
-        TextView clear = Ui.text(this, "清除本地记录", 12, R.color.warn_red);
-        clear.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                confirmClear();
-            }
-        });
-        dataCard.addView(clear);
-        TextView dataHint = Ui.text(this, "清空昵称、头像和阅读记录；剧本与来源不受影响。", 9, R.color.ink_hint);
-        dataHint.setPadding(0, Ui.dp(this, 8), 0, 0);
-        dataHint.setLineSpacing(Ui.dp(this, 3), 1f);
-        dataCard.addView(dataHint);
-        root.addView(dataCard);
-
-        // ---- 关于 ----
-        LinearLayout about = Ui.card(this, 14, 0);
-        TextView aboutTitle = Ui.text(this, "关于", 12, R.color.ink);
-        // 隐藏入口：长按「关于」标题 2 秒打开运行日志（放在不起眼的地方）
-        aboutTitle.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                Toast.makeText(SettingsActivity.this, "打开运行日志", Toast.LENGTH_SHORT).show();
-                startActivity(new Intent(SettingsActivity.this, LogActivity.class));
-                return true;
-            }
-        });
-        about.addView(aboutTitle);
-        TextView a1 = Ui.text(this, "反诈剧本杀 · 教学演示作品\n世界职业院校技能大赛 · 新一代信息技术赛道 · 中职组",
-                9, R.color.ink_secondary);
-        a1.setPadding(0, Ui.dp(this, 8), 0, 0);
-        a1.setLineSpacing(Ui.dp(this, 4), 1f);
-        about.addView(a1);
-        TextView a2 = Ui.text(this, "零权限 · 不联网 · 不收集任何个人信息\n字体 Fusion Pixel Font（MIT）；剧情据公开报道改编",
-                9, R.color.ink_hint);
-        a2.setPadding(0, Ui.dp(this, 8), 0, 0);
-        a2.setLineSpacing(Ui.dp(this, 4), 1f);
-        about.addView(a2);
-        root.addView(about);
     }
 
     private TextView fontChip(String text, final int style) {
@@ -173,20 +127,5 @@ public class SettingsActivity extends BaseActivity {
             }
         });
         return tv;
-    }
-
-    private void confirmClear() {
-        new AlertDialog.Builder(this)
-                .setTitle("清除本地记录？")
-                .setMessage("昵称、头像和阅读记录会被清空，剧本内容不受影响。")
-                .setPositiveButton("清除", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface d, int w) {
-                        UserStore.reset(SettingsActivity.this);
-                        Toast.makeText(SettingsActivity.this, "已清除", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
     }
 }

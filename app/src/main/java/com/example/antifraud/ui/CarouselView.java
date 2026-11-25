@@ -6,6 +6,8 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
@@ -17,6 +19,7 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -30,6 +33,8 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 /**
@@ -46,10 +51,13 @@ import java.util.List;
  */
 public class CarouselView extends FrameLayout {
 
+    /** 配图署名表：covers/caseX.jpg -> "摄影：XXX / Burst（可免费商用）" */
+    private static final Map<String, String> CREDITS = new HashMap<>();
+
     /** 案例数据文件（只读 assets，不联网） */
     private static final String CASES_ASSET = "data/cases.json";
     /** 最多展示几张卡（数据文件里有 6 条真实案例） */
-    private static final int MAX_CARDS = 6;
+    private static final int MAX_CARDS = 10;
     /** 自动轮播间隔 */
     private static final long AUTO_DELAY_MS = 5000L;
     /** 判定为"滑动"的最小水平距离（dp） */
@@ -207,7 +215,7 @@ public class CarouselView extends FrameLayout {
         }
         for (int i = 0; i < loaded.size() && i < MAX_CARDS; i++) {
             Panel p = loaded.get(i);
-            p.view = buildCard(p);
+            p.view = p.isTip ? buildTipCard(p) : buildCard(p);
             p.view.setVisibility(i == 0 ? View.VISIBLE : View.INVISIBLE);
             cardLayer.addView(p.view, new LayoutParams(LayoutParams.MATCH_PARENT,
                     LayoutParams.MATCH_PARENT));
@@ -217,8 +225,55 @@ public class CarouselView extends FrameLayout {
         updateDots(0);
     }
 
+    /**
+     * 读取 assets/data/covers.json，把每张配图的摄影师写进 CREDITS。
+     * 图片全部来自 Burst 免费图库（可免费商用、无需署名），这里仍保留署名
+     * 并在案例详情弹窗里显示，避免任何版权争议。
+     */
+    private void loadCredits() {
+        if (!CREDITS.isEmpty()) {
+            return;
+        }
+        InputStream in = null;
+        try {
+            in = activity.getAssets().open("data/covers.json");
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                out.write(buf, 0, n);
+            }
+            JSONArray arr = new JSONObject(new String(out.toByteArray(), "UTF-8"))
+                    .optJSONArray("covers");
+            if (arr == null) {
+                return;
+            }
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.optJSONObject(i);
+                if (o == null) {
+                    continue;
+                }
+                String file = o.optString("file", "");
+                String author = o.optString("author", "");
+                if (!file.isEmpty() && !author.isEmpty()) {
+                    CREDITS.put(file, "摄影：" + author + " / Burst（免费商用图库）");
+                }
+            }
+        } catch (Exception e) {
+            AppLog.e("HOME", "读取配图署名失败：data/covers.json", e);
+        } finally {
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+    }
+
     /** 读取 assets/data/cases.json，最多返回 MAX_CARDS 条 */
     private List<Panel> readPanels() {
+        loadCredits();
         List<Panel> list = new ArrayList<>();
         InputStream in = null;
         try {
@@ -250,6 +305,8 @@ public class CarouselView extends FrameLayout {
                 if (p.title.isEmpty()) {
                     continue;
                 }
+                p.cover = "covers/case" + list.size() + ".jpg";
+                p.credit = CREDITS.get(p.cover);
                 list.add(p);
             }
         } catch (Exception e) {
@@ -262,7 +319,101 @@ public class CarouselView extends FrameLayout {
                 }
             }
         }
-        return list;
+        return mixWithTips(list);
+    }
+
+    /** 把「口诀卡」按「两案一案诀」的节奏混进案例里，轮到口径不变 */
+    private List<Panel> mixWithTips(List<Panel> cases) {
+        List<Tips.Tip> all = Tips.load(activity);
+        if (all.isEmpty()) {
+            return cases;
+        }
+        List<Panel> tipPanels = new ArrayList<>();
+        for (int i = 0; i < all.size(); i += 3) {
+            Panel p = new Panel();
+            p.isTip = true;
+            p.cover = "covers/tip" + tipPanels.size() + ".jpg";
+            for (int j = i; j < Math.min(i + 3, all.size()); j++) {
+                p.tips.add(all.get(j));
+            }
+            tipPanels.add(p);
+        }
+        List<Panel> mixed = new ArrayList<>();
+        int tipIndex = 0;
+        for (int i = 0; i < cases.size(); i++) {
+            mixed.add(cases.get(i));
+            if (i % 2 == 1 && tipIndex < tipPanels.size()) {
+                mixed.add(tipPanels.get(tipIndex++));
+            }
+        }
+        while (tipIndex < tipPanels.size()) {
+            mixed.add(tipPanels.get(tipIndex++));
+        }
+        return mixed;
+    }
+
+    /** 口诀卡：角标「必背」，三条口诀各一行，点开看全部 8 句 */
+    private LinearLayout buildTipCard(final Panel p) {
+        LinearLayout card = new LinearLayout(activity);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackgroundResource(R.drawable.px_panel);
+        card.setPadding(Ui.dp(activity, 12), Ui.dp(activity, 9),
+                Ui.dp(activity, 12), Ui.dp(activity, 12));
+
+        // 顶部配图（口诀卡用 covers/tip*.jpg）
+        ImageView cover = coverView(p.cover, 900f / 360f);
+        if (cover != null) {
+            card.addView(coverBox(cover), new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
+
+        LinearLayout top = new LinearLayout(activity);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        TextView chip = Ui.text(activity, "反诈口诀", 9, R.color.white);
+        chip.setBackground(pixelBox(activity.getColor(R.color.brand), true));
+        chip.setPadding(Ui.dp(activity, 6), Ui.dp(activity, 2),
+                Ui.dp(activity, 6), Ui.dp(activity, 2));
+        top.addView(chip);
+        View spacer = new View(activity);
+        top.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
+        TextView badge = Ui.text(activity, "必背", 8, R.color.brand_deep);
+        badge.setBackground(pixelBox(activity.getColor(R.color.brand_soft), true));
+        badge.setPadding(Ui.dp(activity, 5), Ui.dp(activity, 2),
+                Ui.dp(activity, 5), Ui.dp(activity, 2));
+        top.addView(badge);
+        card.addView(top);
+
+        TextView title = Ui.text(activity, "背下 8 个字，记住 8 个动作", 13, R.color.ink);
+        title.setPadding(0, Ui.dp(activity, 6), 0, 0);
+        card.addView(title);
+
+        for (Tips.Tip t : p.tips) {
+            LinearLayout row = new LinearLayout(activity);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(0, Ui.dp(activity, 5), 0, 0);
+            TextView key = Ui.text(activity, "「" + t.key + "」" + t.sub, 11, R.color.brand);
+            key.setMaxLines(1);
+            row.addView(key);
+            TextView textView = Ui.text(activity, "  " + t.text, 9, R.color.ink_secondary);
+            textView.setMaxLines(1);
+            textView.setEllipsize(TextUtils.TruncateAt.END);
+            row.addView(textView, new LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            card.addView(row);
+        }
+
+        TextView more = Ui.text(activity, "点开看全部 8 句解释 →", 9, R.color.brand_deep);
+        more.setPadding(0, Ui.dp(activity, 7), 0, 0);
+        card.addView(more);
+
+        card.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Tips.showAll(activity);
+            }
+        });
+        return card;
     }
 
     private Panel fallbackPanel() {
@@ -285,6 +436,13 @@ public class CarouselView extends FrameLayout {
         card.setBackgroundResource(R.drawable.px_panel);
         card.setPadding(Ui.dp(activity, 12), Ui.dp(activity, 9),
                 Ui.dp(activity, 12), Ui.dp(activity, 15));
+
+        // 顶部配图：assets/covers 里的真实照片（读不到就不显示，卡片照常能用）
+        ImageView cover = coverView(p.cover, 900f / 506f);
+        if (cover != null) {
+            card.addView(coverBox(cover), new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
 
         // 顶行：左侧 tag 像素 chip，右侧「真实案例」角标（品牌红实心 + 白字）
         LinearLayout top = new LinearLayout(activity);
@@ -344,9 +502,79 @@ public class CarouselView extends FrameLayout {
         return card;
     }
 
+    /**
+     * 把配图包一层，并在右上角加「示意图」角标：
+     * 照片只是氛围示意，不对应具体案件，避免读者误以为就是案发现场照片。
+     */
+    private FrameLayout coverBox(ImageView cover) {
+        FrameLayout box = new FrameLayout(activity);
+        box.addView(cover, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+
+        TextView badge = Ui.text(activity, "示意图", 8, R.color.white);
+        badge.setBackground(pixelBox(0x99000000, false));
+        badge.setPadding(Ui.dp(activity, 6), Ui.dp(activity, 2),
+                Ui.dp(activity, 6), Ui.dp(activity, 2));
+        FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+        blp.gravity = Gravity.TOP | Gravity.END;
+        blp.topMargin = Ui.dp(activity, 6);
+        blp.rightMargin = Ui.dp(activity, 6);
+        box.addView(badge, blp);
+        return box;
+    }
+
+    /**
+     * 读取 assets 里的卡片配图。
+     *
+     * <p>配图是可选的：文件不存在或解码失败就返回 null，卡片会自动去掉图片区域，
+     * 不会因为少一张图就崩掉。像素图用 CENTER_CROP 裁切填满，保证不留白边。</p>
+     *
+     * @param path  assets 内相对路径，例如 covers/case0.png
+     * @param ratio 图片宽高比（案例图 900:310，口诀图 900:200）；
+     *              高度按宽度自动算，保证整张图都显示、不被裁掉
+     */
+    private ImageView coverView(String path, final float ratio) {
+        if (TextUtils.isEmpty(path)) {
+            return null;
+        }
+        InputStream in = null;
+        try {
+            in = activity.getAssets().open(path);
+            Bitmap bitmap = BitmapFactory.decodeStream(in);
+            if (bitmap == null) {
+                return null;
+            }
+            // 按图片真实比例测量高度：宽度撑满卡片，高度 = 宽度 / 比例，
+            // 这样整张照片完整显示，不会像 CENTER_CROP 那样上下被切掉
+            ImageView iv = new ImageView(activity) {
+                @Override
+                protected void onMeasure(int widthSpec, int heightSpec) {
+                    int w = MeasureSpec.getSize(widthSpec);
+                    int h = Math.round(w / ratio);
+                    setMeasuredDimension(w, h);
+                }
+            };
+            iv.setImageBitmap(bitmap);
+            iv.setScaleType(ImageView.ScaleType.FIT_XY);
+            iv.setContentDescription("");
+            iv.setPadding(0, 0, 0, Ui.dp(activity, 2));
+            return iv;
+        } catch (Exception e) {
+            AppLog.e("HOME", "轮播配图读取失败：" + path, e);
+            return null;
+        } finally {
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+    }
+
     /** 像素风小方块背景：直角 + 深色描边，不用圆角 */
-    private GradientDrawable pixelBox(int color, boolean border) {
-        GradientDrawable gd = new GradientDrawable();
+    private GradientDrawable pixelBox(int color, boolean border) {        GradientDrawable gd = new GradientDrawable();
         gd.setShape(GradientDrawable.RECTANGLE);
         gd.setColor(color);
         if (border) {
@@ -481,6 +709,24 @@ public class CarouselView extends FrameLayout {
 
     // ---------------- 手势：按下记 x，抬起判方向 ----------------
 
+    /** 横向拖动超过阈值就由轮播接管，避免卡片自己的点击被误触发（滑动手势变成打开弹窗） */
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        switch (ev.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                downX = ev.getX();
+                downY = ev.getY();
+                downAt = SystemClock.uptimeMillis();
+                return false;
+            case MotionEvent.ACTION_MOVE:
+                float dx = Math.abs(ev.getX() - downX);
+                float dy = Math.abs(ev.getY() - downY);
+                return dx > clickSlopPx && dx > dy;
+            default:
+                return false;
+        }
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
         switch (ev.getActionMasked()) {
@@ -523,7 +769,8 @@ public class CarouselView extends FrameLayout {
         builder.setTitle(p.title);
         builder.setMessage(p.publisher + "\n" + p.date
                 + "\n案情：" + p.synopsis
-                + "\n原文链接：" + p.url);
+                + "\n原文链接：" + p.url
+                + (TextUtils.isEmpty(p.credit) ? "" : "\n配图：" + p.credit));
         builder.setPositiveButton("复制链接", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -585,6 +832,12 @@ public class CarouselView extends FrameLayout {
         String amount;
         String synopsis;
         String url;
+        /** 卡片顶部配图（assets 内路径，可留空） */
+        String cover;
+        /** 配图署名：摄影师 / 图库，点开案例时显示 */
+        String credit;
+        boolean isTip;
+        List<Tips.Tip> tips = new ArrayList<>();
         View view;
     }
 }
