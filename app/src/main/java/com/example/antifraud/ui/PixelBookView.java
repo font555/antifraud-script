@@ -102,28 +102,42 @@ public class PixelBookView extends View {
             canvas.drawRect(w - u * 1.5f, y, w - u * 1.0f, y + Math.max(1f, u * 0.12f), paint);
         }
 
-        // 6. 顶部装饰条（两条，做出"印刷边框"的感觉）
+        // 6. 封面分块：顶部深色带 + 底部色带，让单色封面有层次
+        paint.setColor(shade(coverColor, 0.78f));
+        canvas.drawRect(left, top, right, top + h * 0.10f, paint);
         paint.setColor(0x66FFFFFF);
-        canvas.drawRect(u * 2.5f, u * 1.0f, right - u * 0.6f, u * 1.0f + Math.max(1f, u * 0.22f), paint);
+        canvas.drawRect(left, top + h * 0.10f, right, top + h * 0.10f + Math.max(1f, u * 0.18f), paint);
+        paint.setColor(shade(coverColor, 0.86f));
+        canvas.drawRect(left, bottom - h * 0.10f, right, bottom, paint);
         paint.setColor(0x33FFFFFF);
-        canvas.drawRect(u * 2.5f, u * 1.5f, right - u * 0.6f, u * 1.5f + Math.max(1f, u * 0.12f), paint);
+        canvas.drawRect(left, bottom - h * 0.10f, right, bottom - h * 0.10f + Math.max(1f, u * 0.12f), paint);
 
-        // 7. 中间像素图标
+        // 7. 中间像素图标：先画米色底托（像贴在封面上的标签），再画图标
         float iconCx = (u * 2.1f + right) / 2f;
-        float iconCy = h * 0.33f;
-        float iconSize = u * 3.2f;
-        drawIcon(canvas, iconCx, iconCy, iconSize, u);
+        float iconCy = h * 0.30f;
+        float iconSize = u * 2.4f;
+        float tileHalf = iconSize * 0.86f;
+        paint.setColor(INK_SOFT);
+        canvas.drawRect(iconCx - tileHalf - u * 0.12f, iconCy - tileHalf - u * 0.12f,
+                iconCx + tileHalf + u * 0.12f, iconCy + tileHalf + u * 0.12f, paint);
+        paint.setColor(CREAM);
+        canvas.drawRect(iconCx - tileHalf, iconCy - tileHalf,
+                iconCx + tileHalf, iconCy + tileHalf, paint);
+        paint.setColor(shade(coverColor, 0.92f));
+        canvas.drawRect(iconCx - tileHalf, iconCy + tileHalf - u * 0.22f,
+                iconCx + tileHalf, iconCy + tileHalf, paint);
+        drawIcon(canvas, iconCx, iconCy - u * 0.12f, iconSize, u);
 
-        // 8. 竖排书名（最多 5 个字，字号按 12px 网格对齐）
+        // 8. 书名：米色字 + 深色投影，不加衬底，保持封面干净
         drawTitle(canvas, u, left, right, h);
 
         // 9. 底部装饰：一条细线 + 三个小方块
-        paint.setColor(0x55FFFFFF);
-        canvas.drawRect(u * 2.6f, h - u * 1.9f, right - u * 0.8f, h - u * 1.9f + Math.max(1f, u * 0.12f), paint);
-        paint.setColor(0x88FFFFFF);
+        paint.setColor(0x66FFFFFF);
+        canvas.drawRect(u * 2.6f, h - u * 1.45f, right - u * 0.8f, h - u * 1.45f + Math.max(1f, u * 0.12f), paint);
+        paint.setColor(0x99FFFFFF);
         for (int i = 0; i < 3; i++) {
             float x = u * 2.6f + i * u * 1.1f;
-            canvas.drawRect(x, h - u * 1.7f, x + u * 0.7f, h - u * 1.35f, paint);
+            canvas.drawRect(x, h - u * 1.3f, x + u * 0.6f, h - u * 1.05f, paint);
         }
     }
 
