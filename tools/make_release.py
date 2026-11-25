@@ -10,8 +10,8 @@ ROOT = r"C:\Users\Lecoo\Desktop\antifraud-script"
 REPO = "font555/antifraud-script"
 API = "https://api.github.com"
 UPLOADS = "https://uploads.github.com"
-APK = os.path.join(ROOT, "dist", "antifraud-v5.3-debug.apk")
-TAG = "v5.3"
+APK = os.path.join(ROOT, "dist", "antifraud-v5.4-debug.apk")
+TAG = "v5.4"
 
 
 def token():
@@ -71,14 +71,14 @@ body = """## 反诈剧本杀 v4.3
 - APK 约 2.9 MB
 
 ### 安装
-下载下方 `antifraud-v5.3-debug.apk`，安卓手机允许"安装未知来源应用"后安装即可。
+下载下方 `antifraud-v5.4-debug.apk`，安卓手机允许"安装未知来源应用"后安装即可。
 
 > 教学演示作品，案例据公开报道改编，人物已匿名、平台名已虚构，与任何机构无隶属关系。
 """
 print("创建 release…")
 rel = call("POST", f"{API}/repos/{REPO}/releases", {
     "tag_name": TAG,
-    "name": "反诈剧本杀 v5.3",
+    "name": "反诈剧本杀 v5.4",
     "body": body,
     "draft": False,
     "prerelease": False,
@@ -89,7 +89,7 @@ size = os.path.getsize(APK)
 print("上传 APK:", round(size / 1024 / 1024, 2), "MB")
 data = open(APK, "rb").read()
 asset = call("POST",
-             f"{UPLOADS}/repos/{REPO}/releases/{rel['id']}/assets?name=antifraud-v5.3-debug.apk",
+             f"{UPLOADS}/repos/{REPO}/releases/{rel['id']}/assets?name=antifraud-v5.4-debug.apk",
              raw=data)
 print("asset:", asset["browser_download_url"])
 print("RELEASE_URL:", rel["html_url"])

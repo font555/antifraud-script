@@ -20,6 +20,8 @@ public class PixelBookView extends View {
     private static final int PAGE = Color.parseColor("#F6E7C6");
     private static final int INK_SOFT = Color.parseColor("#2E1F14");
     private static final int CREAM = Color.parseColor("#FFF6DC");
+    private static final int GOLD = Color.parseColor("#E9B44C");
+    private static final int GOLD_DEEP = Color.parseColor("#B8842A");
 
     private int coverColor = Color.parseColor("#E4572E");
     private String title = "反诈";
