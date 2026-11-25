@@ -13,3 +13,6 @@ logs/
 .DS_Store
 
 tools/_tmp_*.py
+
+__pycache__/
+*.pyc
