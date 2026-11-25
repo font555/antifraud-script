@@ -313,7 +313,7 @@ public class HomeTabView extends LinearLayout {
         cell.setLayoutParams(lp);
 
         final PixelBookView cover = new PixelBookView(activity);
-        cover.setBook(cat.colorInt, cat.glyph);
+        cover.setBook(cat.colorInt, cat.name, cat.glyph);
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         clp.bottomMargin = Ui.dp(activity, 2);
@@ -465,7 +465,7 @@ public class HomeTabView extends LinearLayout {
 
         // 舞台上的封面：绕书脊（左边缘）掀开
         final PixelBookView cov = new PixelBookView(activity);
-        cov.setBook(cat.colorInt, cat.glyph);
+        cov.setBook(cat.colorInt, cat.name, cat.glyph);
         cov.setPivotX(0f);
         cov.setPivotY(h / 2f);
         cov.setCameraDistance(cam);
