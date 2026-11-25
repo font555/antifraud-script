@@ -238,9 +238,9 @@ public class HomeTabView extends LinearLayout {
     private void buildCarousel() {
         carousel = new CarouselView(activity);
         carousel.setHost(host);
-        // 高 310dp（更宽的 2.1:1 配图 + 文字，整页更紧凑），宽度 match_parent；左右 16dp 由 content 的 padding 留出
+        // 高 262dp（2.5:1 配图 + 文字，整页更紧凑），宽度 match_parent；左右 16dp 由 content 的 padding 留出
         carousel.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(activity, 310)));
+                LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(activity, 262)));
         content.addView(carousel);
     }
 
