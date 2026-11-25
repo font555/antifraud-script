@@ -514,6 +514,17 @@ public class CarouselView extends FrameLayout {
         FrameLayout box = new FrameLayout(activity);
         box.addView(cover, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        // 点图片：全屏放大查看（点文字区域仍是看案例详情 / 口诀）
+        cover.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                android.graphics.drawable.Drawable d = ((ImageView) v).getDrawable();
+                if (d instanceof android.graphics.drawable.BitmapDrawable) {
+                    ImagePreview.show(activity,
+                            ((android.graphics.drawable.BitmapDrawable) d).getBitmap());
+                }
+            }
+        });
         return box;
     }
 

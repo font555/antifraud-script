@@ -44,9 +44,8 @@ def center(d, cx, y, s, size, c=INK):
 
 
 def tag(d, x, y, s="示意图"):
-    w = int(d.textlength(s, font=f(13))) + 16
-    px(d, x, y, w, 24, (40, 38, 44))
-    tx(d, x + 8, y + 4, s, 13, WHITE)
+    """角标已去掉：图本身是自绘示意图，详情弹窗里会写明“配图：本作品自绘”。"""
+    return
 
 
 def status(d):
