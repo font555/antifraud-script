@@ -82,18 +82,17 @@ public class SourcesActivity extends BaseActivity {
     }
 
     /**
-     * 配图来源：首页轮播用的是 Burst（Shopify 免费图库）照片，
-     * 许可允许免费商用、不强制署名；这里仍然把摄影师和原页面列出来，
-     * 方便评委核查，也避免版权争议。
+     * 配图说明：首页轮播的 9 张配图全部是本作品自己画的像素图，
+     * 不用新闻原图、不用图库照片，所以没有第三方版权问题。
      */
     private void addImageCredits(LinearLayout box) {
-        TextView title = Ui.text(this, "配图来源（Burst 免费图库 · 可免费商用）", 15, R.color.ink);
+        TextView title = Ui.text(this, "配图说明（本作品自绘）", 15, R.color.ink);
         title.setPadding(0, Ui.dp(this, 22), 0, Ui.dp(this, 6));
         box.addView(title);
 
         TextView note = Ui.text(this,
-                "Burst Some Rights Reserved 许可：免费用于商业与非商业用途、无需署名，"
-                        + "但不得把照片本身作为图库素材再转售。点条目可复制原页面链接。",
+                "首页轮播的 9 张配图全部由本作品自绘（像素风格，纯几何绘制），"
+                        + "不使用任何新闻原图、不依赖图库照片，因此没有第三方版权问题，也不需要署名。",
                 10, R.color.ink_hint);
         note.setLineSpacing(Ui.dp(this, 3), 1f);
         note.setPadding(0, 0, 0, Ui.dp(this, 8));

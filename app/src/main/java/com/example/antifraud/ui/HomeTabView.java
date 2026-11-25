@@ -139,6 +139,7 @@ public class HomeTabView extends LinearLayout {
         loadData();
         buildCarousel();
         buildShelf();
+        buildFooter();
         // 首页只保留「轮播 + 书架」两块；顶部战绩条与底部口诀卡已删除，
         // 之前的房间场景装饰也按反馈删掉了。
     }
@@ -237,13 +238,23 @@ public class HomeTabView extends LinearLayout {
     private void buildCarousel() {
         carousel = new CarouselView(activity);
         carousel.setHost(host);
-        // 高 330dp（16:9 配图按比例自适应 + 文字），宽度 match_parent；左右 16dp 由 content 的 padding 留出
+        // 高 356dp（16:9 配图按比例自适应 + 文字 + 口诀卡三行），宽度 match_parent；左右 16dp 由 content 的 padding 留出
         carousel.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(activity, 330)));
+                LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(activity, 356)));
         content.addView(carousel);
     }
 
     // ---------------- ③ 反诈书架 ----------------
+
+    /** 首页收尾：一行很轻的数据条，避免页面在书架后突然断掉 */
+    private void buildFooter() {
+        TextView footer = Ui.text(activity,
+                "6 类骗局 · 17 本剧本 · 405 个剧情节点 · 71 条可核验来源",
+                10, R.color.ink_hint);
+        footer.setGravity(Gravity.CENTER);
+        footer.setPadding(0, Ui.dp(activity, 16), 0, Ui.dp(activity, 6));
+        content.addView(footer);
+    }
 
     private void buildShelf() {
         TextView title = Ui.text(activity, "反诈书架", 22, R.color.ink);

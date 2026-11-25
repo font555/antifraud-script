@@ -10,8 +10,8 @@ ROOT = r"C:\Users\Lecoo\Desktop\antifraud-script"
 REPO = "font555/antifraud-script"
 API = "https://api.github.com"
 UPLOADS = "https://uploads.github.com"
-APK = os.path.join(ROOT, "dist", "antifraud-v3.2-debug.apk")
-TAG = "v3.2"
+APK = os.path.join(ROOT, "dist", "antifraud-v4.4-debug.apk")
+TAG = "v4.4"
 
 
 def token():
@@ -49,32 +49,36 @@ def call(method, url, data=None, raw=None, attempts=3, timeout=300):
     raise SystemExit("失败: " + str(last))
 
 
-body = """## 反诈剧本杀 v3.2
+body = """## 反诈剧本杀 v4.3
 
 **像素风反诈教育应用**：把真实诈骗案件改编成可以"走一遍"的剧本，每一步都有损失账本，
 结束后逐节点复盘，并对照公开报道原文。
 
-### 有什么
+### 这一版改了什么
+- 首页轮播拉高并加入配图：6 张案例卡按场景配图、3 张口诀卡配图，右上角标注「示意图」，图片出处可查
+- 新手引导改为 5 步：轮播 → 书架 → 剧本列表 → 搜索行加号 → 我的页设置；书架与列表完整高亮，切页只定位一次，去掉"点遮罩跳步"
+- 剧本页加号移到搜索框右侧（列表上方），不再遮挡剧本；列表底部取消预留留白
+- 设置页精简为「字体样式 + 字号大小」，去掉与「我的」页重复的清除记录/关于
+- 修复处置支线幕号错乱（第 5 幕后跳回第 3 幕）
+
+### 内容
 - 6 类骗局、17 个剧本、405 个剧情节点、71 条可核验来源
 - 书架 → 翻书 → 逐条聊天 → 损失账本 → 复盘 → 来源
-- 剧本工坊：自己写剧本，导出 JSON 分享，同学导入就能玩（不需要服务器）
-- 复盘分享海报、桌面小组件、字体/字号设置
 
 ### 技术
-- Android 原生 Java，21 个类，**零第三方依赖**
+- Android 原生 Java，**零第三方依赖**
 - **零权限、零联网、不收集任何个人信息**
-- APK 约 2.5 MB
+- APK 约 2.9 MB
 
 ### 安装
-下载下方 `antifraud-v2.0-debug.apk`，安卓手机允许"安装未知来源应用"后安装即可。
+下载下方 `antifraud-v4.4-debug.apk`，安卓手机允许"安装未知来源应用"后安装即可。
 
 > 教学演示作品，案例据公开报道改编，人物已匿名、平台名已虚构，与任何机构无隶属关系。
 """
-
 print("创建 release…")
 rel = call("POST", f"{API}/repos/{REPO}/releases", {
     "tag_name": TAG,
-    "name": "反诈剧本杀 v3.2",
+    "name": "反诈剧本杀 v4.4",
     "body": body,
     "draft": False,
     "prerelease": False,
@@ -85,7 +89,7 @@ size = os.path.getsize(APK)
 print("上传 APK:", round(size / 1024 / 1024, 2), "MB")
 data = open(APK, "rb").read()
 asset = call("POST",
-             f"{UPLOADS}/repos/{REPO}/releases/{rel['id']}/assets?name=antifraud-v3.2-debug.apk",
+             f"{UPLOADS}/repos/{REPO}/releases/{rel['id']}/assets?name=antifraud-v4.4-debug.apk",
              raw=data)
 print("asset:", asset["browser_download_url"])
 print("RELEASE_URL:", rel["html_url"])

@@ -51,7 +51,7 @@ import java.util.List;
  */
 public class CarouselView extends FrameLayout {
 
-    /** 配图署名表：covers/caseX.jpg -> "摄影：XXX / Burst（可免费商用）" */
+    /** 配图署名表：covers/caseX.jpg -> "本作品自绘" */
     private static final Map<String, String> CREDITS = new HashMap<>();
 
     /** 案例数据文件（只读 assets，不联网） */
@@ -227,7 +227,7 @@ public class CarouselView extends FrameLayout {
 
     /**
      * 读取 assets/data/covers.json，把每张配图的摄影师写进 CREDITS。
-     * 图片全部来自 Burst 免费图库（可免费商用、无需署名），这里仍保留署名
+     * 配图全部是本作品自绘的像素图，没有第三方版权问题
      * 并在案例详情弹窗里显示，避免任何版权争议。
      */
     private void loadCredits() {
@@ -256,7 +256,7 @@ public class CarouselView extends FrameLayout {
                 String file = o.optString("file", "");
                 String author = o.optString("author", "");
                 if (!file.isEmpty() && !author.isEmpty()) {
-                    CREDITS.put(file, "摄影：" + author + " / Burst（免费商用图库）");
+                    CREDITS.put(file, author);
                 }
             }
         } catch (Exception e) {
@@ -364,7 +364,7 @@ public class CarouselView extends FrameLayout {
         ImageView cover = coverView(p.cover, 900f / 360f);
         if (cover != null) {
             card.addView(coverBox(cover), new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+                    LinearLayout.LayoutParams.MATCH_PARENT, coverHeight(900, 360)));
         }
 
         LinearLayout top = new LinearLayout(activity);
@@ -441,7 +441,7 @@ public class CarouselView extends FrameLayout {
         ImageView cover = coverView(p.cover, 900f / 506f);
         if (cover != null) {
             card.addView(coverBox(cover), new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+                    LinearLayout.LayoutParams.MATCH_PARENT, coverHeight(900, 506)));
         }
 
         // 顶行：左侧 tag 像素 chip，右侧「真实案例」角标（品牌红实心 + 白字）
@@ -509,19 +509,15 @@ public class CarouselView extends FrameLayout {
     private FrameLayout coverBox(ImageView cover) {
         FrameLayout box = new FrameLayout(activity);
         box.addView(cover, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
-
-        TextView badge = Ui.text(activity, "示意图", 8, R.color.white);
-        badge.setBackground(pixelBox(0x99000000, false));
-        badge.setPadding(Ui.dp(activity, 6), Ui.dp(activity, 2),
-                Ui.dp(activity, 6), Ui.dp(activity, 2));
-        FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-        blp.gravity = Gravity.TOP | Gravity.END;
-        blp.topMargin = Ui.dp(activity, 6);
-        blp.rightMargin = Ui.dp(activity, 6);
-        box.addView(badge, blp);
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         return box;
+    }
+
+    /** 按卡片实际可用宽度算图片高度，保证整张图等比显示、不被压扁或裁切 */
+    private int coverHeight(int imageWidth, int imageHeight) {
+        int screenW = activity.getResources().getDisplayMetrics().widthPixels;
+        int cardW = screenW - Ui.dp(activity, 32) - Ui.dp(activity, 24);
+        return Math.max(1, Math.round(cardW * (float) imageHeight / imageWidth));
     }
 
     /**
