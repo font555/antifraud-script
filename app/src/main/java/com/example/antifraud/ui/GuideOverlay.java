@@ -326,7 +326,7 @@ public class GuideOverlay extends FrameLayout {
             tip.setY(y);
             tip.setAlpha(0f);
             tip.setVisibility(VISIBLE);
-            tip.animate().alpha(1f).setDuration(160).start();
+            tip.animate().alpha(1f).setDuration(110).start();
             skipBar.setVisibility(VISIBLE);
             shownThisStep = true;
             AppLog.i("GUIDE", "显示第 " + (index + 1) + "/" + steps.size() + " 步：" + step.title);
