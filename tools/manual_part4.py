@@ -1,4 +1,33 @@
-"""代码研读手册 · 第 4 章：5 个核心文件逐行读。"""
+"""代码研读手册 · 第 4 章：5 个核心文件逐行读。
+
+一、这个脚本负责手册的哪一部分
+    它是 61 页手册的“第 4 章”，也是全书最重的一章（约 20 页）：
+        4.1 MainActivity.java（345 行）—— 三个主界面的总调度：三 Tab 切页、
+            返回键、生命周期、TabHost 的 10 个回调、导入剧本、5 步新手引导
+        4.2 ChatActivity.java ★（603 行）—— 聊天引擎，全项目最核心的文件：
+            消息逐条出现、选项可点、损失累加、结局进复盘。分 12 个小节逐段讲
+        4.3 ScriptRepository.java（225 行）—— 剧本 JSON 怎么变成 Java 对象（带缓存）
+        4.4 ReviewActivity.java（260 行）—— 复盘页怎么生成（一步一张卡）
+        4.5 ScriptsTabView.java（750 行）—— 17 本剧本的列表：搜索/筛选/加号菜单/新建
+    这一章的写法是全书独有的：先用 annotated() 把源码原样贴出来，只在关键行
+    右边补一句“这行在干什么”，读者不需要懂 Java 也能顺着念下来。
+    每节最后还有一张“方法地图”（method_table），给出完整的方法清单和行号。
+
+二、怎么调用
+    不单独运行；由 tools/build_manual.py 在 manual_part1 之后、manual_part2a 之前调用：
+        python tools/build_manual.py
+        （内部顺序：part1 → part4 → part2a → part2b）
+    单独预览：
+        from manual_common import new_document
+        from manual_part4 import build_ch4
+        doc = new_document(); build_ch4(doc); doc.save("p4.docx")
+
+三、依赖与注意事项
+    1) annotated() 的行号是“工程里 Java 文件的真实行号”，所以 notes 字典的键
+       必须和源码当前行号一致——Java 代码改动后，这一章的 notes 要跟着核对。
+    2) 本章会现场读 ui/*.java 和 engine/*.java，源码缺失或路径不对会直接抛异常。
+    3) 只加注释不要动 import：这四个 part 脚本共用同一套 manual_common 接口。
+"""
 
 from manual_common import (annotated, bullet, code_block, h1, h2, h3, method_index,
                            note, para, table)
@@ -6,6 +35,18 @@ from manual_common import method_table
 
 
 def build_ch4(doc):
+    """写第 4 章“核心代码逐行读（上）”（约 20 页）。
+
+    参数:
+        doc -- 文档对象
+    返回:
+        None
+    说明:
+        5 个核心文件按“用户路径”排序：总调度（MainActivity）→ 聊天（ChatActivity）
+        → 数据源（ScriptRepository）→ 复盘（ReviewActivity）→ 列表（ScriptsTabView）。
+        每个文件都先给一张“方法地图”或字段表，再用 annotated() 贴关键代码段。
+        全章最后有一个“第一部分小结”，把第 0-4 章串成一条用户路径。
+    """
     h1(doc, "第 4 章  核心代码逐行读（上）")
     para(doc, "这一章是全书重点。5 个文件加起来约 2200 行，是“用户点开一本书到复盘结束”的完整链路。"
               "每个文件先给一张“方法地图”，再把关键代码整段贴出来，行尾的 // 中文说明就是这一行的作用。")
@@ -13,14 +54,19 @@ def build_ch4(doc):
               "代码块里的行号与工程里真实行号一致，方便对照。")
 
     # ================= 4.1 MainActivity =================
+    # 它是整个 App 的“壳”：三个 Tab、切换动画、返回键、新手引导、导入剧本都归它管
     h2(doc, "4.1 MainActivity.java：三个主界面的总调度（345 行）")
     para(doc, "它是整个 App 的“壳”：底部三 Tab、切换动画、返回键、新手引导、导入剧本，都归它管。"
               "三个页面的内容不在这里写，而是分给 HomeTabView / ScriptsTabView / MineTabView。")
 
+    # 4.1.1 字段：先看它手里握着什么，再读方法会轻松很多
+    # 这段代码是类开头的成员变量声明，回答“这个页面有哪些状态要记住”
+    # 阅读提示：head 里的 3 个 View 字段 + 3 个页面字段 = 三 Tab 的骨架
     h3(doc, "4.1.1 先看字段：它手里握着什么")
+    # 下面是类开头的成员变量声明（第 29-42 行），行尾 // 就是逐个字段的解释
     annotated(doc, "ui/MainActivity.java", 29, 42, {
-        30: "6 个头像的“字”，注册页/我的页/聊天页共用这一份",
-        32: "打开系统文件选择器时用的请求码，回来靠它认出是“导入剧本”",
+        30: "6 个头像的“字”，注册页/我的页/聊天页共用这一份",     # AVATAR_GLYPHS 常量
+        32: "打开系统文件选择器时用的请求码，回来靠它认出是“导入剧本”",  # REQ_IMPORT
         34: "三个 Tab 的内容容器（FrameLayout 用来叠放当前 Tab）",
         35: "底部导航条（自绘控件）",
         36: "首页 View（内容在 HomeTabView 里）",
@@ -31,7 +77,10 @@ def build_ch4(doc):
         42: "引导是否正在显示（防止重复弹出）",
     })
 
+    # 4.1.2 onCreate：搭壳 + 预建三个页面（预建是为了让引导能高亮别的 Tab）
+    # 注意第 64 行的顺序：先建完三个页面，最后再 showTab(0)，否则引导第一步找不到目标控件
     h3(doc, "4.1.2 onCreate：搭壳 + 预建三个页面")
+    # 这一段是 onCreate（第 44-69 行）：整个 App 的“壳”在这里搭起来
     annotated(doc, "ui/MainActivity.java", 44, 69, {
         47: "加载 activity_main.xml：里面只有一个 FrameLayout 容器 + 底部导航条",
         48: "处理状态栏与手势条避让（不同手机屏幕高度不一样）",
@@ -47,8 +96,11 @@ def build_ch4(doc):
         68: "默认停在首页",
     })
 
+    # 4.1.3 tabView / showTab：本项目“不用 Fragment 的切页”是怎么做的
+    # 关键点：View 对象一直留在字段里，切页只是“从容器摘下 / 放进容器”，所以状态天然保留
     h3(doc, "4.1.3 tabView / showTab：切页的真相")
     para(doc, "这个项目没有用 Fragment，三个页面就是三个普通 View，切页时把当前 View 从容器里摘掉、换成另一个。")
+    # 这一段是 tabView + showTab（第 73-107 行）：三个 Tab 的懒加载与切换
     annotated(doc, "ui/MainActivity.java", 73, 107, {
         74: "index 0 = 首页",
         76: "第一次用到才 new（懒加载），之后复用同一个对象",
@@ -64,7 +116,10 @@ def build_ch4(doc):
         106: "切完立刻刷新这一页的数据（已读本数、损失金额可能刚变过）",
     })
 
+    # 4.1.4 refreshCurrent / switchTab：为什么刷新要包 try-catch
+    # 一个页面的刷新失败不该拖垮整个 App——这是“答辩演示时不会当场崩”的保险
     h3(doc, "4.1.4 refreshCurrent / switchTab")
+    # 这一段是 refreshCurrent / switchTab（第 109-130 行），右侧页面主动切页也从这里进
     annotated(doc, "ui/MainActivity.java", 109, 130, {
         110: "★ try-catch 包住刷新：某一页刷新出错时，只记日志，不让整个 App 崩掉",
         124: "剧本页/我的页都可能调它切页",
@@ -72,7 +127,10 @@ def build_ch4(doc):
         128: "记日志：用户切到了哪一页",
     })
 
+    # 4.1.5 生命周期与返回键：字号变了要 recreate，引导开着按返回先关引导
+    # 这一段是“用户按返回键时的优先级”：关引导 > 回首页 > 退出 App
     h3(doc, "4.1.5 生命周期与返回键")
+    # 这一段是生命周期回调与返回键处理（第 134-176 行）
     annotated(doc, "ui/MainActivity.java", 134, 176, {
         137: "★ 字体样式/字号改过之后，SettingsStore.changed 会被置 true",
         139: "recreate() 让整个界面按新字号重新长一遍（比逐个控件改字号可靠）",
@@ -84,6 +142,8 @@ def build_ch4(doc):
         175: "已经在首页：交给系统（退出 App）",
     })
 
+    # 4.1.6 TabHost 回调：10 个方法，各页面靠它和主界面通信
+    # 这张表是“谁想做什么 → 调哪个方法”的完整清单，改交互时先在这里找入口
     h3(doc, "4.1.6 TabHost 回调：页面之间怎么“喊话”")
     para(doc, "三个 Tab 和各个子页面都通过 TabHost 接口和 MainActivity 通信，避免互相直接引用。")
     table(doc, ["方法", "谁调用", "作用"],
@@ -98,6 +158,7 @@ def build_ch4(doc):
            ["onDataChanged()", "工坊/编辑器保存后", "三个页面一起刷新"],
            ["toast(msg)", "各个子页面", "统一的短提示"]],
           widths=[4.4, 5.4, 6.6], size=8.5)
+    # 这一段是 openScript 的实现（第 181-194 行）：TabHost 里唯一会跳 Activity 的方法
     annotated(doc, "ui/MainActivity.java", 181, 194, {
         182: "先切到剧本页",
         184: "再按分类过滤，用户看到的就是“这本书里的剧本”",
@@ -106,7 +167,10 @@ def build_ch4(doc):
         193: "页面切换动画：从右侧推进来",
     })
 
+    # 4.1.7 导入剧本：不申请存储权限也能读文件（靠系统文件选择器 + ContentResolver）
+    # 这条链路是“零权限”设计能成立的关键：文件由用户主动选择，App 只拿到一个临时 Uri
     h3(doc, "4.1.7 导入剧本：不申请存储权限也能读文件")
+    # 这一段是导入剧本的回调（第 256-284 行）：从系统文件选择器拿到 Uri 并解析成剧本
     annotated(doc, "ui/MainActivity.java", 256, 284, {
         258: "结果码对不上 / 用户取消了：直接返回",
         262: "系统文件选择器返回的是一个 Uri（文件地址）",
@@ -117,7 +181,10 @@ def build_ch4(doc):
         276: "成功：提示标题并刷新列表",
     })
 
+    # 4.1.8 新手引导：5 步的配置代码（每一步高亮哪个控件、切哪个 Tab）
+    # 想加第 6 步，就在这个数组里再追加一项，并同步改 GuideOverlay 的步数常量
     h3(doc, "4.1.8 新手引导：5 步怎么配置")
+    # 这一段是新手引导的入口与 5 个步骤（第 288-344 行），全章最长的注释块
     annotated(doc, "ui/MainActivity.java", 288, 344, {
         289: "★ 三个条件：没在显示 / 没看过 / 已注册（没注册先让人注册）",
         293: "引导挂在 Activity 的根 View 上，才能盖住所有内容",
@@ -137,10 +204,14 @@ def build_ch4(doc):
     })
 
     # ================= 4.2 ChatActivity =================
+    # 全项目最核心的文件：它把一本剧本“演”出来
     h2(doc, "4.2 ChatActivity.java ★ 聊天引擎（603 行）")
     para(doc, "全项目最核心的文件：它把一本剧本“演”出来——消息一条条出现、选项可点、损失累加、"
               "走到结局后带玩家去复盘。看懂它，就懂了这个 App 的一半。")
 
+    # 4.2.1 关键对象：8 个字段撑起整个聊天页
+    # script / current 决定“演什么”，recorder 决定“复盘记什么”，
+    # handler 决定“消息什么时候出现”，其余 4 个都是界面显示用的
     h3(doc, "4.2.1 它手里有哪些关键对象")
     table(doc, ["变量", "类型", "作用"],
           [["script", "Script", "当前剧本（从 assets 里读出来的）"],
@@ -153,7 +224,10 @@ def build_ch4(doc):
            ["bigFont", "boolean", "是不是“超大”字号（超大时界面要做收缩）"]],
           widths=[3.0, 3.6, 9.8], size=9)
 
+    # 4.2.2 onCreate：进来先干什么（加载布局 → 读剧本 → 配动画 → 开演）
+    # 注意第 71-73 行：读不到剧本会直接退出——这是唯一的“硬失败”分支
     h3(doc, "4.2.2 onCreate：进来先干什么")
+    # 这一段是 onCreate 的前半部分（第 57-100 行）：布局绑定与剧本加载
     annotated(doc, "ui/ChatActivity.java", 57, 100, {
         60: "加载聊天页布局：顶栏（标题/幕次/损失）+ 消息滚动区 + 选项区",
         63: "顶栏标题文字",
@@ -174,8 +248,11 @@ def build_ch4(doc):
         99: "★ 真正开演",
     })
 
+    # 4.2.3 protectHeader：大字号不能把顶栏挤爆（4 档字号下都要能看）
+    # 做法是“字号反向压缩”：字越大，标题本身反而用更小的 sp，把空间留给金额
     h3(doc, "4.2.3 protectHeader：大字号不能把顶栏挤爆")
     para(doc, "这个 App 支持 4 档字号，最大 1.55 倍。如果不处理，超大字号下标题会把“已损失”挤掉。")
+    # 这一段是 protectHeader（第 106-129 行）：按字号倍数压缩顶栏
     annotated(doc, "ui/ChatActivity.java", 106, 129, {
         107: "读字号倍数（1.0 / 1.15 / 1.28 / 1.55）",
         108: "1.5 倍以上算“超大”，界面要更紧凑",
@@ -185,7 +262,10 @@ def build_ch4(doc):
         124: "右侧金额区留最小宽度，靠右对齐，避免被标题挤压",
     })
 
+    # 4.2.4 setupAnimations：气泡为什么会“冒出来”（LayoutTransition）
+    # 只有一行 setAnimator 的两组配置，却是“消息像真人发出来”的一半功劳
     h3(doc, "4.2.4 setupAnimations：气泡为什么会“冒出来”")
+    # 这一段是 setupAnimations（第 132-147 行）：给两个容器装 LayoutTransition
     annotated(doc, "ui/ChatActivity.java", 132, 147, {
         133: "LayoutTransition：容器里子 View 增删时自动播动画",
         134: "★ 新加的气泡：透明度 0→1，240ms",
@@ -194,7 +274,10 @@ def build_ch4(doc):
         141: "选项区也来一套（稍快一点）",
     })
 
+    # 4.2.5 startScript：从头开始 / 重来（清定时器是最关键的一步）
+    # 顺序不能乱：先 removeCallbacks → 再清数据 → 再清界面，否则旧消息会串到新一局里
     h3(doc, "4.2.5 startScript：从头开始 / 重来")
+    # 这一段是 startScript（第 150-168 行）：清空状态，从 startNode 重新开演
     annotated(doc, "ui/ChatActivity.java", 150, 168, {
         152: "★ 清掉所有还没执行的延迟任务，否则重来后旧消息会串场",
         153: "清空说话人颜色表（重新按出现顺序分配）",
@@ -207,6 +290,11 @@ def build_ch4(doc):
         167: "渲染第一个节点",
     })
 
+    # 4.2.6 renderNode：全文件最关键的 70 行（消息时序 + 选项 + 结局）
+    # 这段是全章最长的一个代码块，建议分三段读：
+    #   第 1 段（173-186）：更新顶栏与幕次分隔条
+    #   第 2 段（190-224）：安排“正在输入”与逐条消息的延时
+    #   第 3 段（228-238）：等消息播完，再放选项或结局卡
     h3(doc, "4.2.6 renderNode ★ 一“幕”是怎么演出来的")
     para(doc, "这是全文件最关键的 70 行：先把消息一条条延时加进列表，等全部播完再加选项。")
     annotated(doc, "ui/ChatActivity.java", 171, 245, {
@@ -233,6 +321,8 @@ def build_ch4(doc):
         238: "否则把当前节点的每个选项都生成一个按钮",
     })
 
+    # 4.2.7 说话人颜色与头像：按出现顺序分色，按 hashCode 定形象
+    # 两个维度的确定性：颜色看“第几个说话”，形象看“名字的 hashCode”，所以重玩也一致
     h3(doc, "4.2.7 说话人颜色与头像")
     annotated(doc, "ui/ChatActivity.java", 249, 287, {
         249: "8 种头像底色，故意避开红色（红色留给“我”）",
@@ -242,6 +332,8 @@ def build_ch4(doc):
         284: "★ 名字 → 头像形象：用 hashCode 取模 6，同一个人每局都是同一张脸",
     })
 
+    # 4.2.8 addBubble：三种气泡（对方 / 我 / 系统），宽度 74% 上限
+    # 74% 是刻意留白：太宽会让“谁在说话”变得难分辨，太窄又放不下长句
     h3(doc, "4.2.8 气泡怎么画（addBubble）")
     annotated(doc, "ui/ChatActivity.java", 348, 410, {
         355: "kind 0 = 对方靠左",
@@ -256,6 +348,8 @@ def build_ch4(doc):
         405: "我的消息：右边头像（用玩家注册时选的形象）",
     })
 
+    # 4.2.9 onChoice：剧情推进的心脏（6 个动作，按注释顺序执行）
+    # 这 6 步的顺序不能换：先记录再显示，否则复盘的步骤编号会和界面不一致
     h3(doc, "4.2.9 onChoice ★ 点了一个选项之后发生什么")
     para(doc, "这是“剧情推进”的心脏：记一步 → 把你的选择显示出来 → 显示转账结果 → 更新损失 → 进下一节点。")
     annotated(doc, "ui/ChatActivity.java", 437, 465, {
@@ -273,6 +367,8 @@ def build_ch4(doc):
         464: "渲染新节点，循环继续",
     })
 
+    # 4.2.10 结局与复盘：通关计数 + 累计损失 + 传参给复盘页
+    # 第 517-518 行是唯一两处“写本机存储”的地方，全章只在这里真正落盘
     h3(doc, "4.2.10 结局与复盘")
     annotated(doc, "ui/ChatActivity.java", 478, 532, {
         479: "结局卡：米色卡片（Ui.card 统一风格）",
@@ -287,6 +383,8 @@ def build_ch4(doc):
         531: "关掉聊天页，这样从复盘返回回到剧本页而不是聊天页",
     })
 
+    # 4.2.11 损失金额动画：ValueAnimator 从旧值滚到新值
+    # “数字滚动 + 回弹”是让玩家对损失有感觉的关键，比直接改文字有效得多
     h3(doc, "4.2.11 损失金额动画与其它")
     annotated(doc, "ui/ChatActivity.java", 537, 562, {
         538: "目标金额 = 记录器里的累计花费",
@@ -296,13 +394,22 @@ def build_ch4(doc):
         555: "★ 数字变化时轻微放大再回弹，让用户注意到“又亏了”",
     })
 
+    # 4.2.12 方法地图：ChatActivity 的完整方法清单（60+ 个方法，按行号排序）
+    # 这张表由 method_table() 现场扫源码生成，所以和当前代码永远一致
     h3(doc, "4.2.12 这个文件的方法地图")
     method_table(doc, "ui/ChatActivity.java", size=7.5)
 
+    # 这一章最重要的一条直觉：聊天页不保存进度
+    # 记住这一条，就能解释“为什么中途退出要重玩”“为什么复盘页读的是内存数据”
     note(doc, "⚠️ 读到这里要建立的直觉：聊天页不“保存”任何进度。中途退出=这一局作废；"
               "只有走到结局去复盘时，才会把“已读+1、累计损失+多少”写进本机存储。")
 
     # ================= 4.3-4.5 =================
+    # 剩下 3 个文件只做“方法级”讲解，不再逐行贴代码：
+    #   4.3 数据怎么进来（ScriptRepository）
+    #   4.4 复盘页怎么生成（ReviewActivity）
+    #   4.5 列表怎么筛（ScriptsTabView）
+    # 这三个文件虽然大，但逻辑比 ChatActivity 简单，读者按表查方法即可
     h2(doc, "4.3 ScriptRepository.java：剧本是怎么读进来的（225 行）")
     para(doc, "它是“数据世界”和“界面世界”的桥梁：把 assets 里的 JSON 读成 Java 对象，并做缓存。")
     table(doc, ["方法", "行号", "作用"],
@@ -318,6 +425,8 @@ def build_ch4(doc):
     para(doc, "⚠️ 这里的缓存很重要：17 本剧本解析一次就记住，切页/重进不重复读文件。")
     para(doc, "想加一本剧本，只要把 JSON 放进 assets/scripts/，这个方法会自动发现它，不需要改代码。")
 
+    # 4.4 复盘页：教育落点（一步一张卡，数据全部来自 PathRecorder）
+    # 注意“重玩另一条路”：它清空 PathRecorder 再进聊天页，所以不会串上上一局的记录
     h2(doc, "4.4 ReviewActivity.java：复盘页怎么生成（260 行）")
     para(doc, "复盘页不读剧本正文，它按 PathRecorder 里记下的每一步，回剧本里找对应节点，"
               "把“你选了什么 / 风险 / 为什么 / 损失多少”排成卡片。")
@@ -332,6 +441,8 @@ def build_ch4(doc):
     note(doc, "复盘是这个作品的“教育落点”：同样的剧情，玩家能看到自己每一步的风险判断错在哪。"
               "答辩时如果被问“教育效果怎么体现”，答案就在这个页面 + 前后测数据。")
 
+    # 4.5 剧本列表：文件最大的一个界面（搜索 / 筛选 / 加号 / 新建全在一个文件里）
+    # 行号区间是给“想改某个部分”的读者用的：按区间直接跳，不用通读 750 行
     h2(doc, "4.5 ScriptsTabView.java：17 本剧本的列表（750 行）")
     para(doc, "这是文件最多的一个界面：搜索框、分类筛选、列表、加号菜单、新建剧本，全在一个文件里。")
     table(doc, ["部分", "行号范围", "作用"],
@@ -347,6 +458,7 @@ def build_ch4(doc):
     para(doc, "其中 buildSkeleton（588-671 行）是“套模板新建”的核心：它按分类拼出一本剧本的骨架，"
               "包括开场消息和第一个选项。想加新的模板，看这里。")
 
+    # 第一部分小结：4 条 bullet 把第 0-4 章串起来
     h1(doc, "第一部分小结")
     para(doc, "读完第 0-4 章，你应该能：")
     bullet(doc, "画出用户路径：首页 → 点书 → 剧本列表 → 聊天 → 复盘。")

@@ -1,10 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    注册页布局（RegisterActivity 使用）：第一次打开 App 时让用户起个昵称、选个头像。
+    这是"书库"的封面页，也是唯一的身份设置入口。
+
+    整体结构（外层 ScrollView + 竖直 LinearLayout）：
+      1. 整页居中，中间一张像素风面板卡（id=card）
+      2. 卡片里自上而下：大标题"反诈书库" → 一句说明 → 昵称输入框 →
+         "选一个头像" + 头像横向排列容器 → "进入书库"主按钮 →
+         "先随便逛逛"次按钮 → 底部隐私声明
+
+    重要：昵称和头像只保存在本机（SettingsStore/UserStore），
+    不联网、不上传、不申请任何权限，所以这里没有任何权限相关控件。
+-->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/paper"
     android:fillViewport="true">
 
+    <!-- 整页容器：gravity=center 让卡片在竖直方向居中（配合 fillViewport 才生效） -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -12,6 +26,9 @@
         android:orientation="vertical"
         android:padding="24dp">
 
+        <!-- 中央面板卡：带像素风边框背景，所有注册内容都在这里面。
+             进场时卡片会从下方 36dp 处淡入浮起（320ms），比其他页面稍慢一点，
+             因为这是用户第一次见到作品。 -->
         <LinearLayout
             android:id="@+id/card"
             android:layout_width="match_parent"
@@ -20,6 +37,7 @@
             android:orientation="vertical"
             android:padding="20dp">
 
+            <!-- 产品名大标题 -->
             <com.example.antifraud.ui.PTextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -27,6 +45,7 @@
                 android:textColor="@color/brand"
                 android:textSize="31sp" />
 
+            <!-- 一句引导语：说明进度只记在本机 -->
             <com.example.antifraud.ui.PTextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -36,6 +55,7 @@
                 android:textColor="@color/ink_secondary"
                 android:textSize="13sp" />
 
+            <!-- 昵称输入框：maxLength=8 限制最多 8 个字，minLength 由 Java 校验（2-8 字） -->
             <EditText
                 android:id="@+id/et_nick"
                 android:layout_width="match_parent"
@@ -50,6 +70,7 @@
                 android:textColorHint="@color/ink_hint"
                 android:textSize="18sp" />
 
+            <!-- 小标题：头像选择 -->
             <com.example.antifraud.ui.PTextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -58,6 +79,9 @@
                 android:textColor="@color/ink_secondary"
                 android:textSize="13sp" />
 
+            <!-- 头像横向容器：RegisterActivity 用 AvatarView 生成 6 种像素头像
+                 （生 / 学 / 猫 / 兔 / 熊 / 星，取自 MainActivity.AVATARS），
+                 选中的那个会加高亮外框 -->
             <LinearLayout
                 android:id="@+id/ll_avatars"
                 android:layout_width="match_parent"
@@ -65,6 +89,7 @@
                 android:layout_marginTop="10dp"
                 android:orientation="horizontal" />
 
+            <!-- 主按钮：保存昵称和头像，进入首页书库 -->
             <com.example.antifraud.ui.PTextView
                 android:id="@+id/btn_enter"
                 android:layout_width="match_parent"
@@ -77,6 +102,8 @@
                 android:textColor="@color/white"
                 android:textSize="19sp" />
 
+            <!-- 次按钮：跳过注册，用默认身份"同学"（头像 0）直接放行。
+                 产品上的取舍：注册只是为了体验亲切，不能成为使用门槛。 -->
             <com.example.antifraud.ui.PTextView
                 android:id="@+id/btn_skip"
                 android:layout_width="match_parent"
@@ -88,6 +115,7 @@
                 android:textColor="@color/ink_hint"
                 android:textSize="13sp" />
 
+            <!-- 底部隐私声明：这是作品的重要卖点——纯本地、零权限 -->
             <com.example.antifraud.ui.PTextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

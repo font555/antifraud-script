@@ -23,6 +23,8 @@
         android:textSize="14sp" />
 
     <!-- 随机防骗贴士 -->
+    <!-- 每次刷新随机换一条（数据来自 Tips.TIPS 数组），maxLines="3" 是硬上限：
+         贴士再长也只显示三行，超出部分省略号，避免把小尺寸组件撑破。 -->
     <TextView
         android:id="@+id/tv_tip"
         android:layout_width="match_parent"
@@ -36,6 +38,8 @@
         android:textSize="12sp" />
 
     <!-- 本机读书战绩：已读本数 + 累计损失 -->
+    <!-- 这一行不是静态文案：TipsWidgetProvider.onUpdate 每次刷新都会用
+         setTextViewText 写入"已读 N 本 · 累计损失 ¥X"，N 和 X 来自 UserStore。 -->
     <TextView
         android:id="@+id/tv_stats"
         android:layout_width="match_parent"
@@ -45,4 +49,6 @@
         android:text="已读 0 本 · 累计损失 ¥0"
         android:textColor="@color/ink_hint"
         android:textSize="10sp" />
+    <!-- 补充：以上三条文字的文案都会在刷新时被 TipsWidgetProvider 覆写；
+         tv_stats 用 maxLines="1" 是为了防止长文案把小尺寸组件撑破。 -->
 </LinearLayout>

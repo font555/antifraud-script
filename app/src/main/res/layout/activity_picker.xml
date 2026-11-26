@@ -1,11 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    章节选择页布局（ScriptPickerActivity 使用）：点开书架上的一本书之后，
+    列出这本书里所有章节（剧本），点一章就开始玩。
+
+    整体结构（竖直 LinearLayout）：
+      1. 书页顶部（深色纸色）—— 返回箭头 + 书名 + "选择一章开始"
+      2. 3dp 深色分隔线
+      3. 章节列表滚动区 —— 每一章一张卡片，由 ScriptPickerActivity 动态生成
+
+    为什么用 ScrollView + weight=1：章节数会随剧本增加，列表必须能滚；
+    同时顶部栏固定不动，滚的只有列表区。
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/paper"
     android:orientation="vertical">
 
-    <!-- 书页顶部 -->
+    <!-- 书页顶部：返回箭头 + 书名/副标题两行 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -17,6 +29,7 @@
         android:paddingEnd="16dp"
         android:paddingBottom="14dp">
 
+        <!-- 返回书架（首页） -->
         <com.example.antifraud.ui.PTextView
             android:id="@+id/btn_back"
             android:layout_width="wrap_content"
@@ -26,6 +39,7 @@
             android:textColor="@color/ink"
             android:textSize="24sp" />
 
+        <!-- 标题列：宽 0dp + weight=1 占满箭头右侧的空间 -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -33,6 +47,7 @@
             android:layout_weight="1"
             android:orientation="vertical">
 
+            <!-- 书名（分类名），例如"游戏账号" -->
             <com.example.antifraud.ui.PTextView
                 android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
@@ -41,6 +56,7 @@
                 android:textColor="@color/ink"
                 android:textSize="21sp" />
 
+            <!-- 副标题，例如"共 4 章 · 选择一章开始" -->
             <com.example.antifraud.ui.PTextView
                 android:id="@+id/tv_sub"
                 android:layout_width="wrap_content"
@@ -52,11 +68,13 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- 顶部栏与列表之间的深色分隔线 -->
     <View
         android:layout_width="match_parent"
         android:layout_height="3dp"
         android:background="@color/border_dark" />
 
+    <!-- 章节列表滚动区：高度 0dp + weight=1，吃掉剩下全部高度 -->
     <ScrollView
         android:id="@+id/sv"
         android:layout_width="match_parent"
@@ -64,6 +82,7 @@
         android:layout_weight="1"
         android:fillViewport="true">
 
+        <!-- 章节卡片容器：ScriptPickerActivity 按剧本顺序逐个添加 -->
         <LinearLayout
             android:id="@+id/ll_scripts"
             android:layout_width="match_parent"

@@ -1,11 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    聊天页布局（ChatActivity 使用）：整个作品最核心的一页，把诈骗过程做成
+    "微信聊天 + 选项"的样子，玩家以第一人称和骗子对话。
+
+    整体结构（自上而下竖直排列）：
+      1. 顶部深色栏 —— 返回箭头、剧本名 + 幕次、右上角损失金额与"重来"
+      2. 进度条 —— 显示当前走到第几幕（总幕数由各剧本的 stageCount 决定）
+      3. 消息滚动区 —— 聊天气泡全部由 ChatActivity 动态生成后加入 ll_messages
+      4. 3dp 深色分隔线
+      5. 底部选项区 —— 玩家的选择按钮也由 ChatActivity 动态生成
+
+    注意：气泡的高度、头像尺寸、选项按钮内边距等"装文字的尺寸"都由 Java 里的
+    SettingsStore.scaleBox 按字号档位放大，这里只给出标准档（1.0 倍）的基准值。
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/paper"
     android:orientation="vertical">
 
-    <!-- 像素风顶栏 -->
+    <!-- 像素风顶栏：深色底，左边返回、中间标题与幕次、右边损失与重来 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -17,6 +31,7 @@
         android:paddingEnd="12dp"
         android:paddingBottom="12dp">
 
+        <!-- 返回箭头：点击后询问是否退出本局（避免误触丢失进度） -->
         <com.example.antifraud.ui.PTextView
             android:id="@+id/btn_exit"
             android:layout_width="wrap_content"
@@ -26,6 +41,7 @@
             android:textColor="@color/paper"
             android:textSize="21sp" />
 
+        <!-- 中间一列：上面是剧本标题（超长省略号），下面是"第 N 幕" -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -41,6 +57,7 @@
                 android:textColor="@color/white"
                 android:textSize="18sp" />
 
+            <!-- 幕次文字：由 ChatActivity 根据节点的 stage 字段填充，例如"第 2 幕 / 共 5 幕" -->
             <com.example.antifraud.ui.PTextView
                 android:id="@+id/tv_stage"
                 android:layout_width="match_parent"
@@ -50,12 +67,14 @@
                 android:textSize="11sp" />
         </LinearLayout>
 
+        <!-- 右侧一列：上面是当前累计损失（金色），下面是"重来"按钮 -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="end"
             android:orientation="vertical">
 
+            <!-- 损失账本：本局到目前为止被骗走的钱，实时累加，是核心创新点之一 -->
             <com.example.antifraud.ui.PTextView
                 android:id="@+id/tv_loss"
                 android:layout_width="wrap_content"
@@ -63,6 +82,7 @@
                 android:textColor="@color/gold"
                 android:textSize="14sp" />
 
+            <!-- 重来：清空本局损失与路径，从第 1 幕重新开始 -->
             <com.example.antifraud.ui.PTextView
                 android:id="@+id/btn_restart"
                 android:layout_width="wrap_content"
@@ -76,6 +96,8 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- 幕次进度条：XML 里的 max=5 只是占位数字，ChatActivity 启动时
+         会用剧本的 stageCount 覆盖它；progress 随后续节点推进刷新 -->
     <ProgressBar
         android:id="@+id/pb_stage"
         style="?android:attr/progressBarStyleHorizontal"
@@ -86,6 +108,8 @@
         android:progressTint="@color/gold"
         android:progressBackgroundTint="@color/paper_dark" />
 
+    <!-- 消息滚动区：高度 0dp + weight=1 表示占满顶栏与选项区之间的全部剩余空间，
+         新消息进来时自动滚到底部（fillViewport 保证内容少时也不会缩扁） -->
     <ScrollView
         android:id="@+id/sv_messages"
         android:layout_width="match_parent"
@@ -93,6 +117,8 @@
         android:layout_weight="1"
         android:fillViewport="true">
 
+        <!-- 气泡容器：ChatActivity 按节点里 messages 的顺序，用 postDelayed 一条条添加进来，
+             模拟真人"正在输入"的节奏 -->
         <LinearLayout
             android:id="@+id/ll_messages"
             android:layout_width="match_parent"
@@ -101,12 +127,14 @@
             android:padding="12dp" />
     </ScrollView>
 
+    <!-- 消息区与选项区之间的深色分隔线 -->
     <View
         android:layout_width="match_parent"
         android:layout_height="3dp"
         android:background="@color/border_dark" />
 
-    <!-- 底部选项区（绝不显示风险颜色，避免剧透） -->
+    <!-- 底部选项区（绝不显示风险颜色，避免剧透）：所有按钮都长一个样，
+         玩家选完才知道这一手是"高危"还是"安全"，这才是真实的受骗体验 -->
     <LinearLayout
         android:id="@+id/ll_options"
         android:layout_width="match_parent"

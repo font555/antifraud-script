@@ -1,22 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    剧本编辑页布局（EditorActivity 使用）：剧本工坊里"编辑一个剧本"的表单页。
+
+    整体结构（外层 ScrollView 负责滚动，里面是一个竖直 LinearLayout）：
+      1. 顶部行：左"← 返回"，右"保存"按钮
+      2. 大标题"编辑剧本"
+      3. 表单区：剧本标题、骗局类型、放在哪个书架（分类横向滚动条）、一句话简介
+      4. 节点区：节点卡片列表 ll_nodes（动态生成）+ "＋ 新增节点"
+      5. 校验区："校验剧本"按钮 + 校验结果文字 tv_check
+
+    为什么整页用 ScrollView：表单项多，小屏手机不加滚动会被键盘挡住一半；
+    fillViewport=true 保证内容不满一屏时也能正常铺满，不会出现奇怪的留白。
+-->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/paper"
     android:fillViewport="true">
 
+    <!-- 表单总容器：所有输入框和按钮自上而下排列，左右各留 16dp -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- 顶部操作行：左边返回（轻量文字按钮），中间用 weight=1 的空 View 把两边顶开，
+             右边"保存"是带背景的实心按钮（主操作，视觉上最重） -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
+            <!-- 返回按钮：有未保存修改时 EditorActivity 会先弹确认框 -->
             <com.example.antifraud.ui.PTextView
                 android:id="@+id/btn_back"
                 android:layout_width="wrap_content"
@@ -28,11 +45,13 @@
                 android:textColor="@color/ink_secondary"
                 android:textSize="12sp" />
 
+            <!-- 占位弹簧：宽 0dp + weight=1，把"返回"和"保存"分别推到左右两端 -->
             <View
                 android:layout_width="0dp"
                 android:layout_height="1dp"
                 android:layout_weight="1" />
 
+            <!-- 保存按钮：把表单内容写回剧本 JSON 文件（本机文件，不联网） -->
             <com.example.antifraud.ui.PTextView
                 android:id="@+id/btn_save"
                 android:layout_width="wrap_content"
@@ -47,6 +66,7 @@
                 android:textSize="12sp" />
         </LinearLayout>
 
+        <!-- 页面大标题：新建和编辑共用这一行，文字由 EditorActivity 改写 -->
         <com.example.antifraud.ui.PTextView
             android:id="@+id/tv_title"
             android:layout_width="wrap_content"
@@ -56,6 +76,7 @@
             android:textColor="@color/ink"
             android:textSize="20sp" />
 
+        <!-- 表单项①：剧本标题（必填，保存时校验非空） -->
         <EditText
             android:id="@+id/et_title"
             android:layout_width="match_parent"
@@ -69,6 +90,7 @@
             android:textColorHint="@color/ink_hint"
             android:textSize="13sp" />
 
+        <!-- 表单项②：骗局类型，例如"游戏账号交易诈骗"，会显示在书页简介上 -->
         <EditText
             android:id="@+id/et_scamType"
             android:layout_width="match_parent"
@@ -82,6 +104,7 @@
             android:textColorHint="@color/ink_hint"
             android:textSize="12sp" />
 
+        <!-- 小标题：分类选择 -->
         <com.example.antifraud.ui.PTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -90,12 +113,15 @@
             android:textColor="@color/ink_secondary"
             android:textSize="10sp" />
 
+        <!-- 分类横向滚动条：分类数量会随 assets/data/categories.json 增加，
+             用 HorizontalScrollView 保证一屏放不下时可以左右滑（scrollbars=none 是不要滚动条） -->
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:scrollbars="none">
 
+            <!-- 分类 chip 的容器：EditorActivity 按 categories.json 逐个 new 出来加进来 -->
             <LinearLayout
                 android:id="@+id/ll_cats"
                 android:layout_width="wrap_content"
@@ -103,6 +129,7 @@
                 android:orientation="horizontal" />
         </HorizontalScrollView>
 
+        <!-- 表单项③：一句话简介（多行），显示在书架上那本书的封面上 -->
         <EditText
             android:id="@+id/et_intro"
             android:layout_width="match_parent"
@@ -118,6 +145,7 @@
             android:textColorHint="@color/ink_hint"
             android:textSize="12sp" />
 
+        <!-- 小标题：节点列表 -->
         <com.example.antifraud.ui.PTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -126,6 +154,10 @@
             android:textColor="@color/ink"
             android:textSize="12sp" />
 
+        <!-- 节点卡片列表：每个节点一张卡片，卡片分三层——标题行（节点 id + 说话人，
+             结局节点后面追一个「[结局]」）→ 第一句台词预览（只显示一行，超出省略）
+             → 操作按钮行（编辑节点 / 删除；起始节点出于安全不给「删除」按钮）。
+             点击"编辑节点"会先保存本页表单再跳 NodeEditActivity，内容完全由 EditorActivity 动态生成 -->
         <LinearLayout
             android:id="@+id/ll_nodes"
             android:layout_width="match_parent"
@@ -133,6 +165,8 @@
             android:layout_marginTop="8dp"
             android:orientation="vertical" />
 
+        <!-- 新增节点：先保存当前表单，再自动生成一个带"一高一低"两个默认选项的空节点
+             （默认选项先指回起始节点，保证跳转永远有效），落盘后重画下面的节点列表 -->
         <com.example.antifraud.ui.PTextView
             android:id="@+id/btn_add_node"
             android:layout_width="match_parent"
@@ -145,6 +179,10 @@
             android:textColor="@color/ink"
             android:textSize="12sp" />
 
+        <!-- 校验剧本：点一下把剧本过一遍"简化版检查"，结果输出到下面的 tv_check。
+             共 5 类问题：①起始节点是否存在 ②结局节点是否误加了选项 ③结局标题是否缺失（警告）
+             ④非结局节点选项是否少于 2 个、是否有高风险选项 ⑤跳转目标是否存在。
+             全程本地计算，不上传任何数据。 -->
         <com.example.antifraud.ui.PTextView
             android:id="@+id/btn_check"
             android:layout_width="match_parent"
@@ -157,6 +195,8 @@
             android:textColor="@color/brand"
             android:textSize="12sp" />
 
+        <!-- 校验结果文字区：初始为空，点"校验剧本"后填进错误（✗）/ 警告（△）列表；
+             一条问题都没有时显示"✓ 校验通过：N 个节点，N 个高风险选项，N 个结局" -->
         <com.example.antifraud.ui.PTextView
             android:id="@+id/tv_check"
             android:layout_width="match_parent"

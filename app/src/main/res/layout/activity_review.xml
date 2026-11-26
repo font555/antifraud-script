@@ -1,10 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    复盘页布局（ReviewActivity 使用）：一局玩完后，把玩家走过的每一个节点
+    按顺序摊开，逐条告诉他"这一步错在哪 / 正确做法是什么"。
+
+    整体结构非常简单：外层 ScrollView 负责整页滚动，里面只有一个空的
+    LinearLayout（ll_root）。所有复盘卡片都由 ReviewActivity 用代码动态生成后
+    加进 ll_root（先是结算卡：本局损失 vs 真实案件损失；再是逐节点时间轴；
+    最后是"查看来源 / 重玩另一条路 / 生成分享海报"三个操作按钮），
+    因为卡片数量取决于玩家走了多少步，写死在布局里没有意义。
+
+    为什么只有 20dp 的内边距：复盘卡片本身带边框和背景，外边留白再多会显得散。
+-->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/paper"
     android:fillViewport="true">
 
+    <!-- 复盘内容的容器：ReviewActivity 会把"损失账本 + 逐节点点评 + 建议"依次加进来。
+         宽高都用 wrap_content 撑开，再由外层 ScrollView 滚动。 -->
     <LinearLayout
         android:id="@+id/ll_root"
         android:layout_width="match_parent"

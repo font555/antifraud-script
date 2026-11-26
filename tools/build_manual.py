@@ -1,4 +1,12 @@
-"""生成《反诈剧本杀 · 代码研读手册》第 1 部分（第 0-4 章）。
+"""生成《反诈剧本杀 · 代码研读手册》的入口脚本。
+
+分工：本文件负责「按顺序调用各部分、加页脚、保存 docx、做结构校验」，
+具体章节内容分布在 manual_part1 / manual_part4 / manual_part2a / manual_part2b 里。
+输出：docs/manual/反诈剧本杀-代码研读手册.docx（文件名可用环境变量 MANUAL_NAME 覆盖）
+
+为什么拆成多个文件：手册 10 章内容量很大，放一个文件会难维护；
+拆开后每次改某一章只动对应文件，行号索引也不会互相干扰。
+
 
 用法：python tools/build_manual.py
 产物：docs/manual/反诈剧本杀-代码研读手册.docx

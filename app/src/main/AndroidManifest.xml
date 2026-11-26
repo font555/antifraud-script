@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    应用清单文件：声明 App 的名称、图标、主题，以及所有页面（Activity）、
+    内容提供者（Provider）和桌面小组件（Receiver）。
+
+    两条最重要的设计约定（答辩时可以直接讲）：
+      1. 没有任何 <uses-permission> —— 本作品真的零权限，不联网、不读通讯录、不读存储。
+      2. 除了启动页 MainActivity 和桌面小组件的 Receiver，其余组件全部 exported="false"，
+         别的 App 无法直接拉起本 App 的内部页面，安全性更好。
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- 零权限：不联网、不读取任何信息 -->
+    <!-- 注意：这里刻意不写任何 uses-permission。所有剧本、进度、昵称都只落在
+         应用私有目录（getFilesDir / getCacheDir），不需要存储权限。 -->
 
     <application
         android:allowBackup="false"
@@ -12,6 +23,8 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- 启动页：首页书架。唯一 exported="true" 的 Activity，
+             因为必须能被系统桌面通过 LAUNCHER 图标启动。 -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true">
@@ -21,18 +34,31 @@
             </intent-filter>
         </activity>
 
+        <!-- 首次使用的昵称/头像页。只从 MainActivity 内部跳转，不需要外部唤起 -->
         <activity android:name=".ui.RegisterActivity" android:exported="false" />
+        <!-- 设置页：字体、字号档位（标准/大/特大/超大） -->
         <activity android:name=".ui.SettingsActivity" android:exported="false" />
+        <!-- 剧本工坊：自制剧本的列表页，可新建/导入/导出 -->
         <activity android:name=".ui.StudioActivity" android:exported="false" />
+        <!-- 剧本编辑页：改标题、分类、简介，管理节点 -->
         <activity android:name=".ui.EditorActivity" android:exported="false" />
+        <!-- 节点编辑页：改台词、说话人、是否结局、选项 -->
         <activity android:name=".ui.NodeEditActivity" android:exported="false" />
+        <!-- 运行日志页：只看本机日志，方便排查剧本 JSON 解析问题 -->
         <activity android:name=".ui.LogActivity" android:exported="false" />
+        <!-- 章节选择页：点书架上一本书后，列出这本书里的所有剧本 -->
         <activity android:name=".ui.ScriptPickerActivity" android:exported="false" />
+        <!-- 聊天页：核心玩法页，以聊天形式推进剧情并做选择 -->
         <activity android:name=".ui.ChatActivity" android:exported="false" />
+        <!-- 复盘页：一局结束后逐节点回看"错在哪、正确做法是什么" -->
         <activity android:name=".ui.ReviewActivity" android:exported="false" />
+        <!-- 来源库页：列出剧本引用的真实案例报道，供核对 -->
         <activity android:name=".ui.SourcesActivity" android:exported="false" />
 
         <!-- 复盘分享海报：把 cache 里的图片以 content:// 提供给系统分享（免权限、不要 androidx） -->
+        <!-- exported="false"：只有本 App 能查询这个 provider；
+             grantUriPermissions="true" 是让被分享到的其他 App 临时获得某一个具体
+             图片 URI 的读权限——只授那一条 URI，不开放整个 provider。 -->
         <provider
             android:name=".ui.PosterProvider"
             android:authorities="com.example.antifraud.poster"
@@ -40,12 +66,16 @@
             android:grantUriPermissions="true" />
 
         <!-- 桌面小组件：今日防骗贴士 -->
+        <!-- exported="true" 是系统要求：桌面进程（不是本 App）需要能给它发 APPWIDGET_UPDATE
+             广播来刷新贴士。没有这个广播就只能显示加载中的占位文字。 -->
         <receiver
             android:name=".ui.TipsWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
+            <!-- 小组件的尺寸、刷新周期等元数据，在 res/xml/widget_tips_info.xml 里配置；
+                 布局本身用的是 layout/widget_tips.xml -->
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_tips_info" />

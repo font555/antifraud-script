@@ -1,10 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    来源库布局（SourcesActivity 使用）：列出每个剧本引用的真实案件来源，
+    包括报道标题、发布方、日期和原文链接，供评委和同学核对"案例不是编的"。
+
+    结构：外层 ScrollView + 一个空的 LinearLayout（ll_sources）。
+    每一条来源卡片都由 SourcesActivity 根据剧本 JSON 的 sources 数组动态生成，
+    卡片里显示"标题 / 发布方 / 日期 / 支撑哪几步 / 改编说明"，整张卡片可点，
+    点一下就把原文链接复制到剪贴板（答辩现场网络常常不通，复制比开浏览器实用）。
+
+    注意：本页只展示来源文字与复制链接，不做任何网络请求。
+-->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/paper"
     android:fillViewport="true">
 
+    <!-- 来源卡片的父容器：SourcesActivity 先放一个"真实案例来源"标题行，
+         再按剧本逐张 add 来源卡片，最后追加一段自绘插图的配图说明 -->
     <LinearLayout
         android:id="@+id/ll_sources"
         android:layout_width="match_parent"

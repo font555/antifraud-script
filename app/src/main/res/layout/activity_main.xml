@@ -1,21 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    主界面布局（MainActivity 使用）：整个 App 的骨架，只有三块东西。
+
+    结构：
+      1. tab_container —— 中间的内容区，三个 Tab（首页 / 剧本 / 我的）的页面
+         全部由 MainActivity 用 Java 动态创建后 add 进来，所以这里是个空 FrameLayout。
+      2. 一条 2dp 的分隔线 —— 内容区和底部导航之间的视觉分割。
+      3. tab_bar —— 底部导航条（自定义 View BottomTabBar），画三个图标和文字。
+
+    为什么不用 Fragment：本项目零依赖、纯手写 View，三个 Tab 直接 new 出来切换，
+    比引 Fragment 少一堆生命周期和依赖问题，也方便答辩时讲。
+
+    为什么 tab_container 的高度是 0dp + weight=1：
+    竖直 LinearLayout 里，0dp 表示"不按内容定高度"，weight=1 表示
+    "把父容器剩下的高度全部分给它"。这样底部 tab_bar 拿到自己需要的高度后，
+    中间内容区自动吃掉剩余空间，任何时候都不会被挤出屏幕。
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/paper"
     android:orientation="vertical">
 
+    <!-- 内容区：三个 Tab 页面的容器（内部由 MainActivity 动态填充），高度占满剩余空间 -->
     <FrameLayout
         android:id="@+id/tab_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
 
+    <!-- 内容区与底部导航之间的分隔线：2dp 的深色细线 -->
     <View
         android:layout_width="match_parent"
         android:layout_height="2dp"
         android:background="@color/line" />
 
+    <!-- 底部导航条：高度 wrap_content 由 XML 决定，但整条至少 58dp 的高度
+         由 BottomTabBar 自己按字号档位算（最低 58dp，最大 78dp） -->
     <com.example.antifraud.ui.BottomTabBar
         android:id="@+id/tab_bar"
         android:layout_width="match_parent"

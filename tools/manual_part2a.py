@@ -1,44 +1,102 @@
-"""代码研读手册 · 第二部分 A：第 5-7 章（其余类、数据格式、变量命名）。"""
+"""代码研读手册 · 第二部分 A：第 5-7 章（其余类、数据格式、变量命名）。
 
-import json
-import os
+一、这个脚本负责手册的哪一部分
+    它是 61 页手册的“第 5-7 章”，共约 20 页，是全书篇幅最大的一段：
+        第 5 章  其余 36 个类（方法级）—— 第 4 章只讲了 5 个核心文件，这一章把剩下的
+                 类全部过一遍：engine 6 个、model 5 个、界面底座 7 个、首页 6 个、
+                 工坊 4 个、复盘/海报/来源 3 个、其它 6 个。每个类说清“干什么的、
+                 关键方法、改的时候注意什么”，当字典用，不用通读。
+        第 6 章  数据长什么样—— categories.json、一本剧本的完整 JSON 结构（逐字段）、
+                 tips.json 八条口诀、covers.json 九张配图、17 本剧本的规模统计表。
+                 核心主张是“内容和代码分离：改内容不用改代码”。
+        第 7 章  变量与命名—— 命名规范、60+ 高频变量表（按场景分四组）、
+                 6 组最容易混淆的名字、缩写表。
+
+二、怎么调用
+    不单独运行；由 tools/build_manual.py 在 manual_part4（第 4 章）之后调用：
+        python tools/build_manual.py
+        （内部顺序：part1 → part4 → part2a → part2b，拼成完整 docx）
+    单独预览：
+        from manual_common import new_document
+        from manual_part2a import build_ch5, build_ch6, build_ch7
+        doc = new_document(); build_ch5(doc); build_ch6(doc); build_ch7(doc)
+        doc.save("p2a.docx")
+
+三、依赖
+    排版能力全部来自 manual_common.py（h1/h2/h3/para/bullet/numbered/note/table/
+    code_block/method_table）。本文件额外用 json + os 做一件“活”的事：
+    _scripts_stat() 现场扫描 assets/scripts/*.json，算第 6.7 节那张规模表。
+    注意：不要改 import——四个 part 脚本共用同一套 manual_common 接口。
+"""
+
+import json          # 读剧本 JSON，统计节点数 / 选项数 / 来源条数
+import os            # 拼路径、列目录
 
 from manual_common import (BRAND, GRAY, ROOT, bullet, code_block, h1, h2, h3,
                            method_table, note, numbered, para, table)
 
 
 def _scripts_stat():
-    """扫描 assets/scripts，返回每本剧本的规模数据。"""
+    """扫描 assets/scripts，返回每本剧本的规模数据。
+
+    参数:
+        无
+    返回:
+        二维列表，每行 8 列：
+            [剧本 id, 标题, 分类 id, 节点数, 选项总数, 幕数, 建议时长, 来源条数]
+        行序按文件名排序，所以每次生成的表顺序都一样。
+    副作用:
+        只读文件，不改任何东西。
+    说明:
+        第 6.7 节那张“17 本剧本的规模”表就是它生成的。
+        节点数和选项数是“内容量”的客观指标，答辩时被问“剧情有多少”
+        可以直接指这张表——数字是脚本算的，不是手写的。
+    """
     d = os.path.join(ROOT, "app", "src", "main", "assets", "scripts")
     rows = []
-    for f in sorted(os.listdir(d)):
-        if not f.endswith(".json"):
+    for f in sorted(os.listdir(d)):                          # 按文件名排序，输出稳定
+        if not f.endswith(".json"):                          # 只统计剧本 JSON
             continue
         data = json.load(open(os.path.join(d, f), encoding="utf-8"))
-        nodes = data.get("nodes", {})
+        nodes = data.get("nodes", {})                        # 节点字典（key 是节点 id）
+        # 选项总数 = 所有节点的 options 长度之和
         choices = sum(len(n.get("options", [])) for n in nodes.values())
         rows.append([
-            f.replace(".json", ""),
-            data.get("title", ""),
-            data.get("categoryId", ""),
-            str(len(nodes)),
-            str(choices),
-            str(data.get("stageCount", "")),
-            str(data.get("minutes", "")),
-            str(len(data.get("sources", []))),
+            f.replace(".json", ""),                          # 剧本 id = 文件名去掉后缀
+            data.get("title", ""),                           # 剧本标题
+            data.get("categoryId", ""),                      # 所属分类
+            str(len(nodes)),                                 # 节点数
+            str(choices),                                    # 选项总数
+            str(data.get("stageCount", "")),                 # 总幕数
+            str(data.get("minutes", "")),                    # 建议时长
+            str(len(data.get("sources", []))),               # 来源条数
         ])
     return rows
 
 
 def build_ch5(doc):
+    """写第 5 章“其余 36 个类（方法级说明）”。
+
+    参数:
+        doc -- 文档对象
+    返回:
+        None
+    说明:
+        结构按包 / 功能分 7 节（5.1 engine ～ 5.7 其它），每节里用 h3 讲一个类，
+        再配 1-2 张“方法 → 作用”表。这一章是“字典”，不要求通读。
+        写法上刻意放了多个“⚠️ 易错点”提示框——那些都是改代码时最容易踩的坑。
+    """
     h1(doc, "第 5 章  其余 36 个类（方法级说明）")
     para(doc, "第 4 章讲了 5 个核心文件。这一章把剩下的类全部过一遍：每个类说清楚“它是干什么的、"
               "关键方法有哪些、改东西时要注意什么”。不用背，当字典用。")
 
     # ---------- 5.1 engine ----------
+    # engine 包是“后台”：所有页面共用的数据读写都在这 6 个类里
     h2(doc, "5.1 engine 包：数据与存储（6 个类）")
     para(doc, "engine 是所有页面共用的“后台”：读剧本、存设置、记日志、记路径。")
 
+    # 5.1.1 UserStore：昵称、头像、已读本数、累计损失，全存在 SharedPreferences
+    # 这张表是 UserStore 的公开方法清单，读者想改“我的页”三个数字，照这张表找方法即可
     h3(doc, "5.1.1 UserStore：玩家自己的那点数据（88 行）")
     table(doc, ["方法", "作用"],
           [["isRegistered(ctx)", "有没有注册过（没注册就跳注册页）"],
@@ -52,6 +110,8 @@ def build_ch5(doc):
           widths=[6.2, 9.6], size=9)
     para(doc, "存哪里：SharedPreferences，文件名 antifraud_user。卸载 App 或清除数据就没了，符合“本地存档”的设定。")
 
+    # 5.1.2 SettingsStore：字体 + 字号 + 引导标记；changed 静态开关是这一节的易错点
+    # 表里的 fontScale 就是“设置页那 4 个字号档位”在代码里的唯一来源
     h3(doc, "5.1.2 SettingsStore：字体与引导标记（73 行）")
     table(doc, ["成员", "作用"],
           [["fontStyle(ctx)", "字体：0 = 像素字体，1 = 系统字体"],
@@ -63,8 +123,11 @@ def build_ch5(doc):
           widths=[7.4, 8.4], size=9)
     note(doc, "⚠️ changed 是个静态字段，只在本进程有效。它的作用只有一个：让主界面知道“要按新字号重画一遍”。", "易错点")
 
+    # 5.1.3 PathRecorder：复盘页的唯一数据源；单例、只活在内存里、不落盘
+    # 下面两张表：先列“一条记录长什么样”（Step 字段），再列“能对它做什么”（方法）
     h3(doc, "5.1.3 PathRecorder：复盘页唯一的数据来源（86 行）")
     para(doc, "单例模式（PathRecorder.get()），聊天页每选一次就 record 一步，复盘页从这里读。")
+    # Step 是 PathRecorder 里的一条记录，字段全部来自剧本 JSON 的选项
     table(doc, ["Step 字段", "含义"],
           [["index", "第几步（从 1 开始）"],
            ["nodeId", "发生在哪个节点（如 n3）"],
@@ -85,6 +148,8 @@ def build_ch5(doc):
     note(doc, "⚠️ PathRecorder 是单例，不落盘。它只活在这一次游玩过程里："
               "中途退出，这一局的步骤就没了；复盘页读的正是这份内存数据。", "易错点")
 
+    # 5.1.4 ScriptStore：玩家自写剧本，和内置剧本物理隔离（assets 只读 / filesDir 可写）
+    # importJson 是这一节的重点：它负责“把同学发来的 JSON 变成一本能玩的剧本”
     h3(doc, "5.1.4 ScriptStore：玩家自己写的剧本（219 行）")
     para(doc, "内置剧本在 assets（只读），玩家写的剧本存在 App 私有目录 filesDir/scripts/，两者用 id 区分。")
     table(doc, ["方法", "作用"],
@@ -96,6 +161,8 @@ def build_ch5(doc):
            ["exportJson(ctx, script)", "导出成字符串，供分享/保存到文件"]],
           widths=[6.4, 9.4], size=9)
 
+    # 5.1.5 AppLog：本机日志（入口藏在“长按关于 2 秒”，答辩时可当场演示）
+    # 只保留最近 400 行：日志是排错工具，不是数据，不需要长期堆积
     h3(doc, "5.1.5 AppLog：运行日志（122 行）")
     para(doc, "只在本机写文件：filesDir/logs/app.log，最多保留 400 行。入口藏得深——"
               "我的页长按「关于」两秒。")
@@ -108,12 +175,17 @@ def build_ch5(doc):
     note(doc, "用途：答辩演示时如果出现异常，可以当场打开日志页说明“每一步都有记录”。"
               "这也解释了为什么代码里遍布 AppLog.i(\"CHAT\", ...)。")
 
+    # 5.1.6 第 4.3 节已用整节讲过，这里只留一个指针，避免重复
     h3(doc, "5.1.6 ScriptRepository：已在第 4.3 节讲完（225 行）")
 
     # ---------- 5.2 model ----------
+    # 5 个模型类都只有“字段 + 构造方法”，作用是让 JSON 数据能在代码里按名字访问
+    # 下面 5 张表就是“JSON 字段 ↔ Java 字段”的完整对照，改 JSON 时对着看不会漏
     h2(doc, "5.2 model 包：5 个数据模型（共 89 行）")
     para(doc, "这 5 个类都非常短，只有“字段 + 构造方法”，作用是让 JSON 数据在代码里能按名字访问。")
 
+    # 5.2.1 Script：一本剧本的外壳（对应 assets/scripts/*.json 的顶层）
+    # nodes 是 Map 而不是 List：剧本按 id 随机跳转，用 Map 才能 O(1) 找到下一节点
     h3(doc, "5.2.1 Script（剧本）")
     table(doc, ["字段", "类型", "含义"],
           [["id", "String", "剧本 id = JSON 文件名（如 game-account）"],
@@ -129,6 +201,7 @@ def build_ch5(doc):
            ["nodes", "Map<String, StoryNode>", "★ 全部节点，key 是节点 id"]],
           widths=[3.2, 4.6, 8.0], size=9)
 
+    # 5.2.2 StoryNode：一“幕”（一轮对话 + 一组选项）
     h3(doc, "5.2.2 StoryNode（节点 = 一“幕”里的一轮对话）")
     table(doc, ["字段", "含义"],
           [["id", "节点 id（n1、n2、d1、s1…）"],
@@ -142,6 +215,8 @@ def build_ch5(doc):
            ["endingAdvice", "结局建议（isEnd 时才有）"]],
           widths=[3.6, 12.2], size=9)
 
+    # 5.2.3 Choice：图里的一条边（选项），带风险等级与损失金额
+    # next 就是这条边指向的节点 id；空字符串代表“走到这里就结束”
     h3(doc, "5.2.3 Choice（选项）")
     table(doc, ["字段", "含义"],
           [["text", "选项文字（玩家看到的那句话）"],
@@ -152,6 +227,7 @@ def build_ch5(doc):
            ["feedback", "★ 复盘页对这一选的点评（教育点的核心）"]],
           widths=[2.6, 13.2], size=9)
 
+    # 5.2.4 Category：书架上一本书（6 类骗局）
     h3(doc, "5.2.4 Category（书架上的书）")
     table(doc, ["字段", "含义"],
           [["id", "分类 id（game/rebate/service/police/loan/aiface）"],
@@ -161,6 +237,8 @@ def build_ch5(doc):
            ["colorInt", "封面主色（从 #C0392B 这样的字符串转成 int）"]],
           widths=[2.8, 13.0], size=9)
 
+    # 5.2.5 CaseSource：一条可核验来源（答辩时逐条对得上的关键）
+    # usedIn 字段最容易被问：“这条新闻到底支撑剧本里哪几句台词？”
     h3(doc, "5.2.5 CaseSource（一条来源）")
     table(doc, ["字段", "含义"],
           [["name", "报道标题"],
@@ -172,8 +250,11 @@ def build_ch5(doc):
           widths=[2.8, 13.0], size=9)
 
     # ---------- 5.3 界面底座 ----------
+    # 这些类不直接显示内容，而是被所有页面复用的小零件（工具箱 / 基类 / 字体 / 导航 / 接口）
     h2(doc, "5.3 界面底座：所有页面共用的小零件（7 个类）")
 
+    # 5.3.1 Ui：全项目的工具箱（dp 转换、造控件、风险配色都在这）
+    # 想统一改界面观感（圆角、字号、间距），只需要动这一个类
     h3(doc, "5.3.1 Ui：全项目的“工具箱”（135 行）")
     table(doc, ["方法", "作用"],
           [["dp(ctx, value)", "★ dp 转像素（不同屏幕密度都对齐）"],
@@ -185,16 +266,20 @@ def build_ch5(doc):
            ["riskColor(risk)", "风险等级 → 颜色（high 红 / medium 橙 / low 绿）"]],
           widths=[6.8, 9.0], size=9)
 
+    # 5.3.2 BaseActivity：字号统一下发的关键（也是 sp 会被二次放大的坑，见第 10.3 节）
     h3(doc, "5.3.2 BaseActivity（30 行）")
     para(doc, "所有 Activity 的父类。它只做两件事：按用户设置应用字号倍数、在 onCreate 里记一条访问日志。")
 
+    # 5.3.3 PTextView：XML 里自动套像素字体
     h3(doc, "5.3.3 PTextView（36 行）")
     para(doc, "一个自动套像素字体的 TextView。XML 里把 <TextView> 换成它，就不用每个控件手动设置字体。")
 
+    # 5.3.4 Typefaces：字体加载与缓存（换字体只改 assets，见第 9.4 节）
     h3(doc, "5.3.4 Typefaces：字体来源（37 行）")
     para(doc, "pixel(ctx) 从 assets/fonts/fusion_pixel.ttf 加载像素字体；system() 返回系统字体。"
               "两者都做了缓存，避免反复加载。")
 
+    # 5.3.5 BottomTabBar：自绘底部导航（不用系统 TabLayout，因为那要第三方库）
     h3(doc, "5.3.5 BottomTabBar：底部三 Tab（180 行）")
     para(doc, "自己画的导航条：三个图标 + 文字，选中项变品牌红。没有用系统 TabLayout（那需要第三方库）。")
     table(doc, ["方法", "作用"],
@@ -202,13 +287,17 @@ def build_ch5(doc):
            ["setSelected(index)", "高亮第几个 Tab（切页后调用）"]],
           widths=[5.6, 10.2], size=9)
 
+    # 5.3.6 TabHost：页面与主界面之间的通信接口（只有 11 个方法，由 MainActivity 实现）
     h3(doc, "5.3.6 TabHost：页面之间的“电话线”（40 行）")
     para(doc, "一个只有 11 个方法的接口，由 MainActivity 实现。三个 Tab 和各子页面都通过它喊话，"
               "不去直接引用 MainActivity，方便以后拆分。")
 
     # ---------- 5.4 首页 ----------
+    # 首页 = 轮播 + 书架 + 数据条，6 个类里有 3 个是自绘控件
     h2(doc, "5.4 首页相关（6 个类）")
 
+    # 5.4.1 HomeTabView：首页三块内容 + 翻书动画
+    # buildRoot 只负责“拼”，具体每块的内容交给各子 View，这是它只有 669 行的原因
     h3(doc, "5.4.1 HomeTabView：首页三块内容（669 行）")
     table(doc, ["部分", "作用"],
           [["buildRoot()", "把轮播、书架、底部数据条拼成一页"],
@@ -220,6 +309,8 @@ def build_ch5(doc):
     para(doc, "翻书动画的做法：把封面 View 复制一份放到最上层，用 View 动画做“放大 + 旋转 + 淡出”，"
               "同时背景变暗，动画结束时跳转。没有用共享元素转场（那需要 androidx）。")
 
+    # 5.4.2 CarouselView：全项目最大的文件；重点讲 MIXED 卡片顺序与触摸判定
+    # MIXED 顺序是内容节奏设计：案例 → 案例 → 口诀，让读者在真实案件之间喘口气
     h3(doc, "5.4.2 CarouselView：轮播（854 行，全项目最大的文件）")
     table(doc, ["部分", "作用"],
           [["Panel", "一张卡片的数据：标题/发布方/日期/标签/金额/案情/链接/配图/自绘说明"],
@@ -233,10 +324,13 @@ def build_ch5(doc):
     note(doc, "⚠️ 这个文件大是因为几乎每张卡片的样式都写在代码里。想改轮播内容，"
               "优先改 assets/data/cases.json 和 covers.json，而不是改代码。", "易错点")
 
+    # 5.4.3 ImagePreview：全屏看图（双指缩放 1-4 倍 + 双击 + 关闭），纯 View 实现
     h3(doc, "5.4.3 ImagePreview：点图全屏放大（120 行）")
     para(doc, "点轮播配图后弹出一个全屏 Dialog：深色背景 + 图片居中 + 双指缩放（1-4 倍）+ "
               "双击放大/还原 + 右上角关闭。纯 View 实现，没有第三方图片库。")
 
+    # 5.4.4 PixelBookView：书本封面的 8 层绘制顺序（答辩时能逐层讲）
+    # 顺序不能乱：后画的盖住先画的，投影和外框必须在最底层
     h3(doc, "5.4.4 PixelBookView：书本封面（329 行）")
     table(doc, ["绘制步骤", "内容"],
           [["1", "右下投影 + 深色外框"],
@@ -250,49 +344,61 @@ def build_ch5(doc):
           widths=[2.6, 13.2], size=9)
     para(doc, "所有绘制都关了抗锯齿（setAntiAlias(false)），字和线条就是硬边像素感。")
 
+    # 5.4.5 AvatarView：6 种像素头像（学生/学霸/猫/兔/熊/星）
     h3(doc, "5.4.5 AvatarView：像素头像（205 行）")
     para(doc, "按索引画 6 种形象：学生、学霸（眼镜）、猫、兔、熊、星。"
               "背景色由调用方给（注册页/聊天页用不同颜色区分人）。")
 
+    # 5.4.6 Tips：八条反诈口诀（码/链/钱/平/话/急/警/证）
     h3(doc, "5.4.6 Tips：反诈口诀（127 行）")
     para(doc, "读 assets/data/tips.json 的 8 条口诀（码/链/钱/平/话/急/警/证）。"
               "首页口诀卡显示前 3 条，「点开看全部 8 句解释」会弹窗列出全部。")
 
     # ---------- 5.5 工坊 ----------
+    # 4 个页面组成“玩家自己写剧本”的完整链路：列表 → 编辑剧本 → 编辑节点 → 选剧本
+    # 这一节只需要知道“哪个页面干什么”，具体字段在 NodeEditActivity 那一节看
     h2(doc, "5.5 剧本与工坊（4 个类）")
 
     h3(doc, "5.5.1 StudioActivity：剧本工坊（296 行）")
     para(doc, "管理玩家自己写的剧本：列表、新建、编辑、导出成文件、从文件导入、删除。"
               "数据都存在 filesDir/scripts/，和内置剧本物理隔离。")
 
+    # 剧本级编辑：只改“外壳”，节点内容要进下一层的 NodeEditActivity
     h3(doc, "5.5.2 EditorActivity：剧本级编辑（304 行）")
     para(doc, "编辑一本剧本的“外壳”：标题、骗局类型、书架分类、简介、节点列表（点进去编辑单个节点）。"
               "保存时会做基本校验（标题不能为空、至少一个节点）。")
 
+    # 节点级编辑：一本剧本的“一格”，所有台词和选项都在这里填
     h3(doc, "5.5.3 NodeEditActivity：节点编辑（283 行）")
     para(doc, "编辑一个节点：说话人、台词（一行一条）、是否结局、结局文案、最多 3 个选项。"
               "每个选项要填：文字、跳到哪个节点、风险等级、标签、损失金额、点评。")
 
+    # 书页：点书架上的书之后、进剧本之前的过渡页（只有 1 本剧本时会跳过）
     h3(doc, "5.5.4 ScriptPickerActivity：翻开一本书后的书页（180 行）")
     para(doc, "点书架上的书之后进入：列出这个分类下的剧本，点一本直接进聊天页。"
               "如果这一分类下只有 1 本，会直接跳过这个页面。")
 
     # ---------- 5.6 反馈 ----------
+    # 复盘 → 海报 → 来源，是“教育闭环”的三个出口：看错在哪 → 讲给别人 → 查证据源
     h2(doc, "5.6 复盘、海报、来源（3 个类）")
 
     h3(doc, "5.6.1 SharePoster：复盘海报（200 行）")
     para(doc, "用 Canvas 画一张 1080×1350 的像素风长图：标题、损失金额、高风险次数、几句口诀、"
               "二维码位置留白。存到 cacheDir/share/poster.png，再通过系统分享面板发出去。")
 
+    # 海报能发出去的关键：PosterProvider 只暴露 cacheDir/share，不用申请存储权限
     h3(doc, "5.6.2 PosterProvider：把图片交给系统（58 行）")
     para(doc, "一个极简 ContentProvider，只暴露 cacheDir/share 下的文件，"
               "这样系统分享面板能读到图片，又不需要申请任何存储权限。")
 
+    # 来源页是“可核验”这条红线的落地：71 条来源逐条可查，9 张配图声明自绘
     h3(doc, "5.6.3 SourcesActivity：来源页（203 行）")
     para(doc, "列出 71 条来源：标题、发布方、日期、支撑哪几步、改编说明。点一条复制原文链接。"
               "底部还有 9 张自绘配图的版权说明（全部本作品原创）。")
 
     # ---------- 5.7 其它 ----------
+    # 剩下 6 个页面/控件，按“行数 + 一句话作用”列表带过
+    # 其中 GuideOverlay 是答辩高频追问点，下面单独拉一张表讲它的三个机制
     h2(doc, "5.7 其它页面与控件（6 个类）")
     table(doc, ["类", "行数", "作用"],
           [["RegisterActivity", "151", "首次进入：昵称（2-8 字）+ 6 个头像，只存本机"],
@@ -303,6 +409,8 @@ def build_ch5(doc):
            ["SpotlightView", "53", "引导用的遮罩：整屏压暗，中间挖一个圆角矩形洞"]],
           widths=[4.6, 1.6, 9.6], size=9)
 
+    # 5.7.1 引导的三个关键机制（答辩高频追问点，单独拉出来讲）
+    # 这三个机制合起来解释了“为什么引导只能点下一步、且切页面不闪”
     h3(doc, "5.7.1 GuideOverlay 的三个关键机制")
     table(doc, ["机制", "做法"],
           [["高亮洞", "SpotlightView 用 Xfermode 在暗色遮罩上“挖洞”，洞的位置由目标控件在屏幕上的坐标算出来"],
@@ -312,10 +420,24 @@ def build_ch5(doc):
 
 
 def build_ch6(doc):
+    """写第 6 章“数据长什么样”（约 8 页）。
+
+    参数:
+        doc -- 文档对象
+    返回:
+        None
+    说明:
+        这一章要证明一件事：这个项目的“内容”和“代码”是分开的，改内容不用改代码。
+        结构：6 个分类表 → 一本剧本的完整 JSON（带注释的代码块）→ 字段速查表
+        → 一个节点怎么变成一次点击（5 步）→ tips 口诀 → covers 配图 → 17 本剧本规模表。
+        其中 6.7 的规模表由 _scripts_stat() 现场扫描生成。
+    """
     h1(doc, "第 6 章  数据长什么样")
     para(doc, "这个项目的“内容”和“代码”是分开的：所有剧情、分类、口诀、配图说明都是 JSON。"
               "改内容不用改代码，这是最容易上手的一块。")
 
+    # 6.1 分类：书架上 6 本书的数据来源
+    # 表的每一行就是 categories.json 数组里的一项：id 用英文（代码里认）、name/desc 给人看
     h2(doc, "6.1 categories.json：6 个分类")
     para(doc, "位置：assets/data/categories.json。书架上的 6 本书就是它。")
     table(doc, ["id", "name", "desc", "glyph", "color"],
@@ -327,6 +449,7 @@ def build_ch6(doc):
            ["aiface", "AI换脸诈骗", "视频通话 · 熟人借钱", "脸", "#3C7A89"]],
           widths=[2.2, 3.8, 5.6, 1.8, 2.4], size=9)
 
+    # 6.2 一本剧本的完整结构：真实 JSON 节选，是全书最重要的代码块之一
     h2(doc, "6.2 一本剧本的完整结构")
     para(doc, "位置：assets/scripts/<剧本 id>.json。下面以 game-account.json 为例（节选真实内容）。")
     code_block(doc, """{
@@ -362,6 +485,8 @@ def build_ch6(doc):
   }
 }""", size=7.2, caption="代码 6-1  game-account.json 的真实结构（省略了部分内容）")
 
+    # 6.3 字段速查：三层（剧本 / 节点 / 选项）的必填项与含义
+    # “必填”一列是校验脚本的判断依据：标“是”的字段缺失，validate_script.py 会报错
     h2(doc, "6.3 字段速查表")
     table(doc, ["层级", "字段", "必填", "说明"],
           [["剧本", "id", "是", "与文件名一致，剧本列表靠它"],
@@ -383,6 +508,7 @@ def build_ch6(doc):
            ["选项", "text / next / risk / tag / cost / feedback", "是", "六件套，见 5.2.3 节"]],
           widths=[1.8, 5.6, 1.4, 7.0], size=8.5)
 
+    # 6.4 一个节点怎么变成一次点击：把“数据 → 界面”的映射讲透
     h2(doc, "6.4 一个节点是怎么变成一次点击的")
     numbered(doc, "聊天页加载剧本 → 从 startNode（n1）开始渲染。")
     numbered(doc, "n1 的 messages 逐条出现（间隔 660ms），播完显示 options 的三个按钮。")
@@ -392,6 +518,8 @@ def build_ch6(doc):
     note(doc, "所以“剧本”本质是一张有向图：节点是点，选项是边，边的标签里带着“这是好选择还是坏选择”。"
               "支线命名有规律：n = 主线，d = 处置支线，s = 安全线。", "理解要点")
 
+    # 6.5 口诀：8 个字，一屏能记住的反诈要点
+    # 表里只摘“字 + 两个字动作”，完整解释在 assets/data/tips.json 的 text 字段里
     h2(doc, "6.5 tips.json：8 条口诀")
     table(doc, ["key", "sub", "text（全文见文件）"],
           [["码", "不给", "验证码、密码、人脸核验，谁要都不给"],
@@ -404,6 +532,7 @@ def build_ch6(doc):
            ["证", "要留", "聊天记录、转账凭证、对方账号全部截图"]],
           widths=[1.6, 1.8, 12.4], size=9)
 
+    # 6.6 covers.json：9 张自绘配图的登记表（同时供轮播和来源页使用）
     h2(doc, "6.6 covers.json：9 张配图的说明")
     para(doc, "每张图登记：文件路径、作者（本作品自绘）、来源（留空）、主题。"
               "这个文件同时被两处使用：轮播卡片的配图说明、来源页的配图版权说明。")
@@ -419,6 +548,8 @@ def build_ch6(doc):
            ["covers/tip2.jpg", "口诀：警 / 证"]],
           widths=[4.4, 11.4], size=9)
 
+    # 6.7 17 本剧本的规模：整张表由 _scripts_stat() 现场统计，数字不是手写的
+    # 8 列分别是：id / 标题 / 分类 / 节点数 / 选项数 / 幕数 / 时长 / 来源条数
     h2(doc, "6.7 17 本剧本的规模（脚本自动统计）")
     para(doc, "下表由脚本读 assets/scripts 生成，行数就是真实数据。节点数和选项数可以说明内容量。")
     table(doc, ["剧本 id", "标题", "分类", "节点", "选项", "幕", "时长", "来源"],
@@ -426,9 +557,23 @@ def build_ch6(doc):
 
 
 def build_ch7(doc):
+    """写第 7 章“变量与命名”（约 3 页）。
+
+    参数:
+        doc -- 文档对象
+    返回:
+        None
+    说明:
+        这一章解决“读代码时最卡的问题：这个变量到底是啥”。
+        分四块：命名规范表 → 60+ 高频变量（通用 / 剧本聊天 / 首页轮播 / 引导设置四组）
+        → 最容易混淆的 6 组名字 → 缩写表。
+        全部是“查得到”的表格，不要求背。
+    """
     h1(doc, "第 7 章  变量与命名")
     para(doc, "读代码时最容易卡住的是“这个变量到底是啥”。这一章把命名习惯和 50 多个常见变量列清楚。")
 
+    # 7.1 命名规范：类 / 方法 / 常量 / 成员 / 局部 / 资源 id / XML 属性 七类
+    # 写这些表的原因：读代码时只要认出前缀，就知道这个变量是哪一层的东西
     h2(doc, "7.1 命名规范")
     table(doc, ["类型", "规范", "例子"],
           [["类", "大驼峰 PascalCase", "ChatActivity、ScriptRepository、PixelBookView"],
@@ -440,6 +585,7 @@ def build_ch7(doc):
            ["XML 属性", "Android 默认规范", "versionCode、minSdk、compileSdk"]],
           widths=[2.4, 6.0, 7.4], size=9)
 
+    # 7.2 高频变量：按出现场景分四组，每组一张表（读代码时对着查）
     h2(doc, "7.2 高频变量表（按出现场景分组）")
     h3(doc, "7.2.1 通用")
     table(doc, ["变量", "含义", "出现在哪"],
@@ -497,6 +643,8 @@ def build_ch7(doc):
            ["changed", "设置改过的标记（静态）"]],
           widths=[4.0, 11.8], size=9)
 
+    # 7.3 易混淆组：读代码时最容易搞错的地方，答辩也常被追问
+    # 左边是“看起来相似的两个名字”，右边是“一句话说清区别”——记住这 6 组就够用
     h2(doc, "7.3 最容易混淆的几组")
     table(doc, ["看起来相似", "区别"],
           [["Script / ScriptStore", "Script 是一本剧本的数据；ScriptStore 是“玩家自写剧本”的存储工具"],
@@ -507,6 +655,7 @@ def build_ch7(doc):
            ["Panel / Card", "Panel 是轮播数据对象；Card 是屏幕上那张卡片的 View"]],
           widths=[4.6, 11.2], size=9)
 
+    # 7.4 缩写表：Android 常用的 dp/sp/ll/tv 这些，看代码时对不上就查这张
     h2(doc, "7.4 缩写表")
     table(doc, ["缩写", "全称", "中文"],
           [["dp", "density-independent pixel", "设备无关像素（1dp ≈ 不同屏幕的同一物理尺寸）"],

@@ -1,31 +1,58 @@
+// app 模块的 Gradle 构建脚本：只写"这个 App 怎么编译"的配置。
+// 项目刻意做成「原生 Java + 零第三方依赖」，所以下面几乎看不到花哨配置。
+
 plugins {
+    // Android 应用插件：提供 assembleDebug / assembleRelease 等任务，
+    // 版本由根目录 build.gradle 的插件声明决定。
     id 'com.android.application'
 }
 
 android {
+    // 代码的包名前缀。Java 里的 package 与它对应，
+    // 生成 R 类时也用这个作为基包（R 在 com.example.antifraud.R）。
     namespace 'com.example.antifraud'
+
+    // 编译时使用的 Android SDK 版本（需要本机已安装该平台）。
+    // 升级它一般是为了用新的编译校验；改大之前先确认 SDK 已下载。
     compileSdk 37
 
     defaultConfig {
+        // 安装到手机后的唯一标识。一旦发布过就不能随便改，否则手机会当成两个 App。
         applicationId "com.example.antifraud"
+
+        // 最低支持 Android 7.0（API 24）。写这么低是为了学校机房里旧设备也能装。
         minSdk 24
+
+        // 目标 SDK 版本：声明"按哪个版本的行为规范运行"。
         targetSdk 37
-        versionCode 60
-        versionName "6.0"
+
+        // 版本号：每次要覆盖安装新包就把它 +1（60 -> 61）。
+        // 用户看不到它，只用于系统判断新旧。
+        versionCode 61
+
+        // 版本名：显示给用户看的版本字符串，可以和 versionCode 一起改（如 "6.0" -> "6.1"）。
+        versionName "6.1"
     }
 
     buildTypes {
         release {
+            // 关闭代码压缩/混淆：本项目代码量小、无第三方库，混淆收益不大，
+            // 反而会让答辩时看崩溃日志变难，所以保持 false。
             minifyEnabled false
         }
     }
 
     compileOptions {
+        // 指定用 Java 17 语法编译源码，和本项目使用的 JDK 17 保持一致。
+        // 之所以显式写死（而不是跟 AGP 默认值）：换一台机器编译时行为统一，
+        // 不会因为 JDK 版本不同突然报"不再支持源选项 X"。
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
 }
 
 // 刻意不加任何第三方依赖：零依赖 = 编译快、安装包小、答辩好讲
+// 所以下面依赖块是空的。所有界面（聊天气泡、像素按钮、轮播、头像）
+// 都是项目自己用 Canvas 画的，一个 androidx 都没引。
 dependencies {
 }

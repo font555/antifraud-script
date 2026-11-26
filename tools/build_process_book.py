@@ -2,34 +2,47 @@
 """生成《反诈剧本杀 · 过程记录册》：Markdown + Word 两个版本。
 
 数据来源：真实 git 提交记录 + 真实 Release + 真实测试截图，不编造。
+只写「有据可查」的内容：
+    - 提交记录来自 git log（脚本实时读取，不是抄的）
+    - 版本发布、缺陷修复来自真实 Release 与回归测试
+    - 截图来自演示机实际运行
+    —— 任何还没有实测的数据一律写【待实测】，不用估算值代替。
 """
-import os
-import subprocess
-from datetime import datetime
-
-from docx import Document
-from docx.enum.section import WD_SECTION
-from docx.enum.table import WD_TABLE_ALIGNMENT
+import os  # 标准库：os 拼路径、subprocess 调 git、datetime 留作日期工具
+import subprocess  # python-docx：第三方依赖，需要 pip install python-docx
+from datetime import datetime  # 分节符（本册暂未使用，保留给以后分栏/换页用）
+  # 表格对齐方式
+from docx import Document  # 段落对齐与分页符
+from docx.enum.section import WD_SECTION  # Word 底层 XML 命名空间，用于设置中文字体
+from docx.enum.table import WD_TABLE_ALIGNMENT  # 厘米 / 磅 / 颜色
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
-ROOT = r"C:\Users\Lecoo\Desktop\antifraud-script"
-LOGS = os.path.join(ROOT, "logs")
-ART = os.path.join(ROOT, "artifacts")
-OUT_MD = os.path.join(ROOT, "docs", "过程记录册.md")
-OUT_DOCX = os.path.join(ROOT, "docs", "过程记录册.docx")
+ROOT = r"C:\Users\Lecoo\Desktop\antifraud-script"  # 项目根目录
+LOGS = os.path.join(ROOT, "logs")  # 截图主目录
+ART = os.path.join(ROOT, "artifacts")  # 备份素材目录（logs 里找不到图时来这儿找）
+OUT_MD = os.path.join(ROOT, "docs", "过程记录册.md")  # 输出的 Markdown
+OUT_DOCX = os.path.join(ROOT, "docs", "过程记录册.docx")  # 输出的 Word
 
-INK = RGBColor(0x2B, 0x1D, 0x12)
-BRAND = RGBColor(0xB5, 0x35, 0x18)
-GREY = RGBColor(0x6B, 0x52, 0x33)
+INK = RGBColor(0x2B, 0x1D, 0x12)  # 正文墨色（深棕）
+BRAND = RGBColor(0xB5, 0x35, 0x18)  # 品牌色（砖红），用于标题与强调
+GREY = RGBColor(0x6B, 0x52, 0x33)  # 次要文字（灰棕），用于说明与页脚
 
+# ---------------------------------------------------------------- 静态素材
+# 下面这几张表是「人工整理 + 逐条核对」出来的过程材料，改的时候要同步改
+# docs/ 里的对应文档，别让册子和文档说法不一致。
+#   RELEASES : 版本发布记录（版本号、发布时间、包体积、本版改了什么）
+#   BUGS     : 缺陷发现与修复记录（现象 → 原因 → 修复 → 验证）
+#   TIMELINE : 开发时间线（按真实提交时间排列，每条都对应仓库里的一次提交）
 RELEASES = [
     ("v2.0", "2026-11-22 20:49", "2.54 MB", "剧本工坊 + 复盘分享海报 + 桌面小组件；书架合并用户剧本"),
     ("v2.1", "2026-11-22 21:14", "2.54 MB", "首次进入的聚光灯新手引导（4 步高亮 / 跳过 / 只弹一次）"),
     ("v2.2", "2026-11-22 21:17", "2.54 MB", "字号新增「超大」（1.55×），选项改为横向滑动"),
     ("v2.3", "2026-11-22 22:10", "2.55 MB", "修复 10 项缺陷（含引导卡死）；新增隐藏运行日志"),
 ]
+# SHOTS : 关键界面截图清单（文件名 + 一句话说明），文件放在 logs/ 或 artifacts/ 下
+# STATS : 作品关键指标，封面后的第一张表就是它
 
 BUGS = [
     ("B1", "新手引导卡死：整屏变暗、说明卡不显示、点哪都没反应", "说明卡只按目标控件定位；目标在屏幕外时卡片跑到屏幕外；遮罩拦截触摸且无兜底", "目标自动滚动进可视区；卡片位置夹在屏幕内；点遮罩任意处=下一步；固定底部「跳过引导」；1.6 秒超时自动结束；返回键关闭", "模拟器实测 4 步可完成、可跳过、重启不再弹"),
@@ -92,11 +105,26 @@ STATS = [
 
 
 def git_commits():
+    """从 git log 读出真实提交记录。
+
+    参数:
+        无。
+
+    返回:
+        list —— 每项是 [短 sha, 提交时间(MM-DD HH:MM), 提交说明] 的三元列表，按时间倒序。
+
+    说明:
+        用 "|" 做分隔符而不是默认格式，是因为提交说明里可能有空格；
+        split("|", 2) 限制只切两刀，保证说明里的 "|" 不会被拆坏。
+        这里不做任何筛选或美化——册子里的提交记录必须和仓库里的一模一样。
+    """
     out = subprocess.run(
         ["git", "log", "--date=format:%m-%d %H:%M", "--pretty=format:%h|%ad|%s"],
         cwd=ROOT, capture_output=True)
     rows = []
     for line in out.stdout.decode("utf-8", "replace").splitlines():
+    # --date=format 让 git 直接输出「月-日 时:分」，省掉一次时间格式化。
+    # 提交说明里若含中文字符，统一按 UTF-8 解码，解不开的用 replace 兜住，保证不中断生成。
         parts = line.split("|", 2)
         if len(parts) == 3:
             rows.append(parts)
@@ -104,6 +132,19 @@ def git_commits():
 
 
 def set_cn_font(run, size=None, bold=False, color=None, name="Microsoft YaHei"):
+    """给一段文字设置中文字体（同时设置西文名与 eastAsia 名）。
+
+    参数:
+        run  : python-docx 的 Run 对象（一段连续同格式的文字）。
+        size : 字号（磅）；None 表示不设置，沿用样式里的默认值。
+        bold : 是否加粗。
+        color: RGBColor 颜色；None 表示不设置。
+        name : 字体名，默认微软雅黑。
+
+    说明:
+        Word 里中文走的是 w:eastAsia 这个属性，只设 font.name 在中文版 Word 里
+        往往不生效（会回退成宋体），所以这里两个都设。
+    """
     run.font.name = name
     run._element.rPr.rFonts.set(qn("w:eastAsia"), name)
     if size:
@@ -114,6 +155,21 @@ def set_cn_font(run, size=None, bold=False, color=None, name="Microsoft YaHei"):
 
 
 def para(doc, text, size=10.5, bold=False, color=INK, align=None, space_after=4, name="Microsoft YaHei"):
+    """往文档里加一个普通段落。
+
+    参数:
+        doc        : Document 对象。
+        text       : 段落文字。
+        size       : 字号（磅），默认 10.5（五号）。
+        bold       : 是否加粗。
+        color      : 文字颜色。
+        align      : 对齐方式（WD_ALIGN_PARAGRAPH 常量）；None 表示用默认左对齐。
+        space_after: 段后间距（磅）。
+        name       : 字体名。
+
+    返回:
+        Paragraph —— 方便调用方继续加内容或改格式。
+    """
     p = doc.add_paragraph()
     r = p.add_run(text)
     set_cn_font(r, size, bold, color, name)
@@ -124,6 +180,20 @@ def para(doc, text, size=10.5, bold=False, color=INK, align=None, space_after=4,
 
 
 def heading(doc, text, level=1):
+    """加一个标题段落（没有用 Word 内置标题样式，而是手工排版）。
+
+    参数:
+        doc  : Document 对象。
+        text : 标题文字。
+        level: 1 = 章标题（18 磅）、2 = 节标题（14 磅）、3 = 小节标题（12 磅）。
+
+    返回:
+        Paragraph —— 新建的标题段落。
+
+    说明:
+        不用内置 Heading 样式，是因为内置样式会带主题色和自动编号，
+        在这个像素风的手册里反而不好控制版面。
+    """
     size = {1: 18, 2: 14, 3: 12}[level]
     p = doc.add_paragraph()
     r = p.add_run(text)
@@ -134,6 +204,22 @@ def heading(doc, text, level=1):
 
 
 def table(doc, headers, rows, widths=None, font_size=8.5):
+    """加一张带表头的表格。
+
+    参数:
+        doc      : Document 对象。
+        headers  : 表头文字列表。
+        rows     : 数据行，二维列表，每行长度应与表头一致。
+        widths   : 各列宽度（厘米）；None 表示用 Word 的自动列宽。
+        font_size: 表格内字号（磅）。表格通常信息密度高，默认给 8.5 磅。
+
+    返回:
+        Table —— 新建的表格对象。
+
+    说明:
+        单元格先清空再写 run，是为了避免 python-docx 默认段落里残留一个空 run，
+        导致表格文字出现「两段」的怪异行距。
+    """
     t = doc.add_table(rows=1, cols=len(headers))
     t.style = "Table Grid"
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -158,6 +244,18 @@ def table(doc, headers, rows, widths=None, font_size=8.5):
 
 
 def picture(doc, filename, caption, width=11.5):
+    """插入一张截图并配一行居中的说明文字。
+
+    参数:
+        doc     : Document 对象。
+        filename: 截图文件名（不含目录），脚本会先去 logs/ 找，找不到再去 artifacts/。
+        caption : 图下方的说明文字。
+        width   : 图片宽度（厘米）。
+
+    说明:
+        找不到图片时不会中断生成，而是原地写一行「（截图缺失：xxx）」——
+        这样即使换一台机器、素材没同步，册子也能照常产出并一眼看出缺了哪张。
+    """
     path = os.path.join(LOGS, filename)
     if not os.path.exists(path):
         path = os.path.join(ART, filename)
@@ -173,20 +271,25 @@ def picture(doc, filename, caption, width=11.5):
     set_cn_font(r, 8.5, False, GREY)
 
 
+# ============================ 生成 Word ============================
+# 整个 Word 版是「顺序往下写」的：先定版式，再一段一段加内容。
+# 每个 section 上方都有 # ---- 标题 ---- 的注释，和册子的目次一一对应。
 # ============================ Word ============================
-doc = Document()
-sec = doc.sections[0]
-sec.page_width, sec.page_height = Cm(21), Cm(29.7)
-sec.left_margin = sec.right_margin = Cm(2.2)
-sec.top_margin = sec.bottom_margin = Cm(2.0)
+doc = Document()  # 新建空白文档
+sec = doc.sections[0]  # 取第一节（A4 纵向）
+sec.page_width, sec.page_height = Cm(21), Cm(29.7)  # 纸张：21 × 29.7 厘米
+sec.left_margin = sec.right_margin = Cm(2.2)  # 左右边距 2.2 厘米
+sec.top_margin = sec.bottom_margin = Cm(2.0)  # 上下边距 2.0 厘米
+# 版式：A4 纵向、左右边距 2.2cm、上下 2.0cm，正文默认微软雅黑 10.5 磅。
+# 这三个数决定了整本册子的页数和行宽，改之前先想清楚。
 
-style = doc.styles["Normal"]
+style = doc.styles["Normal"]  # 正文样式：微软雅黑 10.5 磅
 style.font.name = "Microsoft YaHei"
 style.font.size = Pt(10.5)
-style.element.rPr.rFonts.set(qn("w:eastAsia"), "Microsoft YaHei")
+style.element.rPr.rFonts.set(qn("w:eastAsia"), "Microsoft YaHei")  # 中文字体必须单独设 eastAsia，否则中文会回退成宋体
 
 # ---- 封面 ----
-for _ in range(4):
+for _ in range(4):  # 封面顶部留白（空 4 行）
     doc.add_paragraph()
 para(doc, "反诈剧本杀", 34, True, BRAND, WD_ALIGN_PARAGRAPH.CENTER, 6)
 para(doc, "过 程 记 录 册", 22, True, INK, WD_ALIGN_PARAGRAPH.CENTER, 20)
@@ -195,7 +298,7 @@ para(doc, "作品形态：Android 原生应用（零第三方依赖 · 零权限
 para(doc, "记录周期：2026-11-22 ~ 2026-11-24", 11, False, INK, WD_ALIGN_PARAGRAPH.CENTER, 6)
 para(doc, "对应版本：v3.0　｜　安装包：antifraud-v3.0-debug.apk（2.61 MB）", 11, False, INK, WD_ALIGN_PARAGRAPH.CENTER, 6)
 para(doc, "本册内容全部来自真实提交记录、真实截图与真实版本发布，未做任何虚构。", 10, False, GREY, WD_ALIGN_PARAGRAPH.CENTER, 6)
-doc.add_page_break()
+doc.add_page_break()  # 封面单独一页
 
 # ---- 一、作品概述 ----
 heading(doc, "一、作品概述")
@@ -214,8 +317,8 @@ table(doc, ["时间", "完成内容", "证据"], TIMELINE, widths=[3.0, 10.0, 4.
 
 # ---- 三、提交记录 ----
 heading(doc, "三、代码提交记录（全部）")
-commits = git_commits()
-para(doc, f"共 {len(commits)} 次提交，按时间倒序。提交信息保持原样，未做美化。")
+commits = git_commits()  # 实时读 git log，册子里的提交记录永远和仓库一致
+para(doc, f"共 {len(commits)} 次提交，按时间倒序。提交信息保持原样，未做美化。")  # 原样打印提交条数，不做任何筛选
 table(doc, ["#", "时间", "提交", "说明"],
       [(str(i + 1), c[1], c[0], c[2]) for i, c in enumerate(commits)],
       widths=[1.0, 3.0, 2.0, 11.0], font_size=7.5)
@@ -241,7 +344,7 @@ table(doc, ["功能", "引入版本", "说明"], [
 ], widths=[7.5, 3.5, 6.0], font_size=8.5)
 
 # ---- 六、缺陷与修复 ----
-doc.add_page_break()
+doc.add_page_break()  # 缺陷表从这一页开始，避免和上一节挤在一起
 heading(doc, "六、缺陷发现与修复记录")
 para(doc, "下面 10 项问题都是在真机 / 模拟器复现后修复的，部分由同学试用时发现（如“新手引导卡死”），"
           "修复后逐条回归验证。这张表也是“每次改动都要说清为什么改、怎么验证”的直接证据。")
@@ -249,7 +352,7 @@ table(doc, ["编号", "现象", "原因", "修复方式", "验证结果"], [(b[0
       widths=[1.2, 4.6, 4.4, 5.0, 3.2], font_size=7)
 
 # ---- 七、关键截图 ----
-doc.add_page_break()
+doc.add_page_break()  # 截图从新的一页开始排
 heading(doc, "七、关键界面截图（实测）")
 para(doc, "以下截图全部来自演示机实际运行，未做 P 图处理；状态栏时间不一致是因为分批测试。")
 for fn, cap in SHOTS:
@@ -257,7 +360,7 @@ for fn, cap in SHOTS:
 picture(doc, "技术路线图.png", "技术路线图：5 个阶段 / 4 层架构 / 关键决策", 14.5)
 
 # ---- 八、过程材料清单 ----
-doc.add_page_break()
+doc.add_page_break()  # 材料清单也单独起页，方便评审查阅
 heading(doc, "八、过程材料清单")
 table(doc, ["材料", "所在位置", "说明"], [
     ("剧本与来源", "app/src/main/assets/scripts/*.json；docs/sources.md", "17 本剧本，405 节点，71 条来源，每条含标题/发布方/日期/链接"),
@@ -278,48 +381,52 @@ para(doc, "4. 作品为教学演示作品，与公安等任何机构无隶属关
 para(doc, "5. 尚未实测的数据（30 人前后测、冷启动耗时）在材料中一律标注【待实测】，不以估算值代替。", 10)
 para(doc, "核验入口：GitHub 仓库 https://github.com/font555/antifraud-script （公开）；安装包见 Releases v2.0–v2.3。", 10, True, BRAND)
 
-doc.save(OUT_DOCX)
+doc.save(OUT_DOCX)  # 保存 Word
 print("saved", OUT_DOCX)
 
+# ============================ 生成 Markdown ============================
+# Markdown 版是 Word 版的「纯文本镜像」：同样的章节、同样的表格、同样的截图说明。
+# 它的用途是把内容纳入 git 版本管理（Word 是二进制，diff 看不出改了什么）。
+# 图片用相对路径 ../logs/xxx.png 引用，保证在仓库里直接预览就能看到图。
 # ============================ Markdown ============================
-md = []
-md.append("# 反诈剧本杀 · 过程记录册\n")
+md = []  # Markdown 用「先攒列表、最后一次性写入」的方式拼，避免频繁开文件
+md.append("# 反诈剧本杀 · 过程记录册\n")  # 标题与说明
 md.append("> 世界职业院校技能大赛 · 新一代信息技术赛道 · 中职组\n")
 md.append("> 记录周期：2026-11-22 ~ 2026-11-24 ｜ 对应版本：v2.3 ｜ 安装包 2.55 MB\n")
 md.append("> 本册内容全部来自真实提交记录、真实截图与真实版本发布，未做虚构。\n")
-md.append("\n## 一、作品概述\n\n")
+md.append("\n## 一、作品概述\n\n")  # 第一章：作品概述（与 Word 版逐段对应）
 md.append("「反诈剧本杀」是一款像素风的安卓应用：把真实诈骗案件改编成可以“走一遍”的书。"
           "学生在 6–8 分钟里经历一次完整骗局，每一步做选择，顶部账本实时显示已损失金额，"
           "结束后逐节点复盘，并能翻回公开报道原文核对。\n\n")
 md.append("设计上坚持三条：不联网、不申请任何权限、不收集个人信息；技术上零第三方依赖，"
           "剧本是 JSON 数据而不是代码。\n\n")
-md.append("| 指标 | 数值 |\n|---|---|\n")
+md.append("| 指标 | 数值 |\n|---|---|\n")  # 指标表：Markdown 表格靠表头分隔行定义列，不能漏
 for k, v in STATS:
     md.append(f"| {k} | {v} |\n")
-md.append("\n## 二、开发时间线\n\n| 时间 | 完成内容 | 证据 |\n|---|---|---|\n")
+md.append("\n## 二、开发时间线\n\n| 时间 | 完成内容 | 证据 |\n|---|---|---|\n")  # 开发时间线
 for t, what, ev in TIMELINE:
     md.append(f"| {t} | {what} | {ev} |\n")
-md.append(f"\n## 三、代码提交记录（共 {len(commits)} 次）\n\n| # | 时间 | 提交 | 说明 |\n|---|---|---|---|\n")
+md.append(f"\n## 三、代码提交记录（共 {len(commits)} 次）\n\n| # | 时间 | 提交 | 说明 |\n|---|---|---|---|\n")  # 提交记录：条数直接取实时读到的数量
 for i, c in enumerate(commits):
     md.append(f"| {i + 1} | {c[1]} | `{c[0]}` | {c[2]} |\n")
-md.append("\n## 四、版本发布记录\n\n| 版本 | 发布时间 | 安装包 | 本版新增 / 修复 |\n|---|---|---|---|\n")
+md.append("\n## 四、版本发布记录\n\n| 版本 | 发布时间 | 安装包 | 本版新增 / 修复 |\n|---|---|---|---|\n")  # 版本发布记录
 for a, b, c_, d in RELEASES:
     md.append(f"| {a} | {b} | {c_} | {d} |\n")
-md.append("\n## 五、功能演进对照\n\n| 功能 | 引入版本 | 说明 |\n|---|---|---|\n")
+md.append("\n## 五、功能演进对照\n\n| 功能 | 引入版本 | 说明 |\n|---|---|---|\n")  # 功能演进对照
 md.append("| 书架 + 翻书动效 + 聊天 + 损失账本 + 复盘 + 来源 | v0.x（首日） | 核心闭环：选书 → 走骗局 → 看后果 → 复盘 |\n")
 md.append("| 说话人彩色头像 / 换号换名换色 | v1.7 | 同局内按出现顺序分配颜色，避开我方红色 |\n")
 md.append("| 设置页：字体样式 + 4 档字号 | v1.8 → v2.2 | 像素/系统字体；标准 / 大 / 特大 / 超大（1.55×） |\n")
 md.append("| 剧本工坊、复盘分享海报、桌面小组件 | v2.0 | 本地创作与分享，不需要服务器 |\n")
 md.append("| 新手引导（聚光灯 4 步） | v2.1 | 首次进入触发，可跳过，只弹一次 |\n")
 md.append("| 运行日志（隐藏入口） | v2.3 | 设置页长按「关于」2 秒进入，只写本机 |\n")
-md.append("\n## 六、缺陷发现与修复记录\n\n| 编号 | 现象 | 原因 | 修复方式 | 验证结果 |\n|---|---|---|---|---|\n")
+md.append("\n## 六、缺陷发现与修复记录\n\n| 编号 | 现象 | 原因 | 修复方式 | 验证结果 |\n|---|---|---|---|---|\n")  # 缺陷与修复：用 join 拼成一行，条目里不能含竖线（会在 BUGS 里提前保证）
 for b in BUGS:
     md.append("| " + " | ".join(b) + " |\n")
-md.append("\n## 七、关键界面截图\n\n")
+md.append("\n## 七、关键界面截图\n\n")  # 截图：用仓库相对路径引用，git 里可直接预览
 for fn, cap in SHOTS:
     md.append(f"### {cap}\n\n![{cap}](../logs/{fn})\n\n")
 md.append("### 技术路线图\n\n![技术路线图](../artifacts/技术路线图.png)\n")
-md.append("\n## 八、过程材料清单\n\n")
+md.append("\n## 八、过程材料清单\n\n")  # 材料清单
 md.append("- 剧本与来源：`app/src/main/assets/scripts/*.json`；`docs/sources.md`\n")
 md.append("- 剧本校验脚本：`tools/validate_script.py`（当前 0 错误）\n")
 md.append("- 运行日志：设置 → 长按「关于」2 秒\n")
@@ -327,7 +434,7 @@ md.append("- 技术路线图：`docs/技术路线图.md`；`artifacts/技术路�
 md.append("- 项目介绍：`docs/项目介绍.md`\n")
 md.append("- 前后测与问卷：`docs/test-pre-post.md`；`docs/survey.md`（成绩【待实测】）\n")
 md.append("- 安装包：`dist/antifraud-v2.3-debug.apk`；GitHub Releases v2.0–v2.3\n")
-md.append("\n## 九、真实性声明\n\n")
+md.append("\n## 九、真实性声明\n\n")  # 真实性声明
 md.append("1. 提交记录、版本号、安装包体积均来自仓库与发布记录，可现场核验。\n")
 md.append("2. 截图来自演示机实际运行，不含真实平台名、账号、二维码与个人信息。\n")
 md.append("3. 案例据公开报道改编，人物匿名、平台名虚构，来源与改编说明见 `sources` 字段。\n")
@@ -335,7 +442,7 @@ md.append("4. 作品为教学演示作品，与任何机构无隶属关系，不
 md.append("5. 未实测数据（30 人前后测、冷启动耗时）一律标注【待实测】。\n")
 md.append("\n核验入口：<https://github.com/font555/antifraud-script>\n")
 
-with open(OUT_MD, "w", encoding="utf-8", newline="\n") as f:
+with open(OUT_MD, "w", encoding="utf-8", newline="\n") as f:  # newline="\n" 保证在 Windows 上也写出 LF，避免 git 里整篇显示改动
     f.write("".join(md))
-print("saved", OUT_MD)
-print("commits:", len(commits))
+print("saved", OUT_MD)  # 打印产物路径，方便直接在命令行点开
+print("commits:", len(commits))  # 顺带汇报提交条数，和册子里的数字对得上

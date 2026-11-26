@@ -1,5 +1,10 @@
 """Generate pixel-art cover banners for the home carousel.
 
+早期版本：为首页轮播画 640×220 的像素风封面横幅（纯几何图形，无版权风险）。
+**已被 tools/draw_covers9.py 取代**——后来轮播高度压缩、画幅改成
+案例 2.5:1 / 口诀 3:1，统一由 draw_covers9.py 重绘 9 张图。
+本脚本保留作参考，不再参与构建流程。
+
 Pure shapes (rectangles / polygons) so the result matches the app's pixel style
 and carries no third-party image licensing risk. Output goes to
 app/src/main/assets/covers/*.png (640x220, upscaled x4 with NEAREST).

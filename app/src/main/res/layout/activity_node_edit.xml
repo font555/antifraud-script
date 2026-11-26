@@ -1,22 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    节点编辑页布局（NodeEditActivity 使用）：编辑一个剧情节点的全部内容——
+    谁在说话、说了几句什么、是不是结局、以及最多 3 个选项。
+
+    整体结构（外层 ScrollView + 竖直 LinearLayout）：
+      1. 顶部行：左"← 返回"，右"保存节点"
+      2. 节点标题 tv_node（例如"节点 n3"）
+      3. 台词区：说话人 et_speaker、台词 et_messages（一行一条消息）
+      4. 结局区：勾选框 cb_end + 结局标题 et_ending_title + 结局点评 et_ending_advice
+      5. 选项区：选项卡片列表 ll_options（动态生成）
+      6. 最下面"删除这个节点"（红色，危险操作）
+
+    关键规则：只有勾选了"这是结局节点"，结局标题和点评才需要填；
+    剧情节点则至少要有一个选项，否则玩家会卡在这里走不下去。
+-->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/paper"
     android:fillViewport="true">
 
+    <!-- 表单总容器：所有表单项自上而下排列 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- 顶部操作行：返回 + 弹簧 + 保存节点 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
+            <!-- 返回：回到剧本编辑页，未保存修改会先确认 -->
             <com.example.antifraud.ui.PTextView
                 android:id="@+id/btn_back"
                 android:layout_width="wrap_content"
@@ -28,11 +46,13 @@
                 android:textColor="@color/ink_secondary"
                 android:textSize="12sp" />
 
+            <!-- 占位弹簧：把返回和保存分别顶到左右两端 -->
             <View
                 android:layout_width="0dp"
                 android:layout_height="1dp"
                 android:layout_weight="1" />
 
+            <!-- 保存节点：把本页内容写回该节点 -->
             <com.example.antifraud.ui.PTextView
                 android:id="@+id/btn_save"
                 android:layout_width="wrap_content"
@@ -47,6 +67,7 @@
                 android:textSize="12sp" />
         </LinearLayout>
 
+        <!-- 节点标题：显示"节点 n3"之类的编号，由上一页传参进来 -->
         <com.example.antifraud.ui.PTextView
             android:id="@+id/tv_node"
             android:layout_width="wrap_content"
@@ -55,6 +76,7 @@
             android:textColor="@color/ink"
             android:textSize="18sp" />
 
+        <!-- 表单项①：说话人。决定聊天气泡的头像颜色，换号剧情要写成像"卖家（新号）" -->
         <EditText
             android:id="@+id/et_speaker"
             android:layout_width="match_parent"
@@ -68,6 +90,7 @@
             android:textColorHint="@color/ink_hint"
             android:textSize="12sp" />
 
+        <!-- 表单项②：台词。一行一条消息，空行会被忽略，这样多条消息才有"连发"的节奏感 -->
         <EditText
             android:id="@+id/et_messages"
             android:layout_width="match_parent"
@@ -83,6 +106,7 @@
             android:textColorHint="@color/ink_hint"
             android:textSize="12sp" />
 
+        <!-- 表单项③：是否结局节点。勾上之后下面的"结局标题/点评"才变成必填 -->
         <CheckBox
             android:id="@+id/cb_end"
             android:layout_width="wrap_content"
@@ -92,6 +116,7 @@
             android:textColor="@color/ink"
             android:textSize="12sp" />
 
+        <!-- 结局标题：例如"0 损失结局"，只在结局节点填写 -->
         <EditText
             android:id="@+id/et_ending_title"
             android:layout_width="match_parent"
@@ -105,6 +130,7 @@
             android:textColorHint="@color/ink_hint"
             android:textSize="12sp" />
 
+        <!-- 结局点评：这一步错在哪、正确做法是什么，是复盘页的核心素材 -->
         <EditText
             android:id="@+id/et_ending_advice"
             android:layout_width="match_parent"
@@ -120,6 +146,7 @@
             android:textColorHint="@color/ink_hint"
             android:textSize="12sp" />
 
+        <!-- 小标题：选项区 -->
         <com.example.antifraud.ui.PTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -128,6 +155,12 @@
             android:textColor="@color/ink"
             android:textSize="12sp" />
 
+        <!-- 选项卡片列表：每个选项一张卡片，从上到下依次是
+             启用勾选框 → 文案 / 跳转目标 / 风险标签 / 损失金额 / 复盘反馈五个输入框
+             → 三个风险 chip（高 / 中 / 低，"high"/"medium"/"low"）。
+             硬规则：只要填了损失金额（>0），保存时风险等级会被强制改成 high，
+             防止作者写出"亏了 4700 却标低风险"这种自相矛盾的剧情。
+             全部由 NodeEditActivity 动态生成。 -->
         <LinearLayout
             android:id="@+id/ll_options"
             android:layout_width="match_parent"
@@ -135,6 +168,7 @@
             android:layout_marginTop="8dp"
             android:orientation="vertical" />
 
+        <!-- 删除节点：红色文字提示这是不可逆操作，点了之后会从剧本里移除该节点 -->
         <com.example.antifraud.ui.PTextView
             android:id="@+id/btn_delete"
             android:layout_width="match_parent"
