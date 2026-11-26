@@ -322,7 +322,7 @@ public class MainActivity extends BaseActivity implements TabHost {
                 overlay.addStep(homeView == null ? null : homeView.shelfView(), "从一本书开始",
                         "六本书对应六类骗局，点开封面会翻开，翻完直接带你去剧本页。");
                 overlay.addStep(scriptsView == null ? null : scriptsView.listView(), "这里是全部剧本",
-                        "17 本剧本都在这里，上面可以搜索和按骗局类型筛选，点一本就能开始。", 0.55f);
+                        "18 本剧本都在这里，上面可以搜索和按骗局类型筛选，点一本就能开始。", 0.55f);
                 overlay.addStep(scriptsView == null ? null : scriptsView.fabButtonView(), "自己也能写剧本",
                         "点搜索框右边的加号：新建空白、套模板，或者导入同学发来的剧本。");
                 overlay.addStep(mineView == null ? null : mineView.settingsRowView(), "觉得字累眼？",

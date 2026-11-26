@@ -249,7 +249,7 @@ public class HomeTabView extends LinearLayout {
     /** 首页收尾：一行很轻的数据条，避免页面在书架后突然断掉 */
     private void buildFooter() {
         TextView footer = Ui.text(activity,
-                "6 类骗局 · 17 本剧本 · 405 个剧情节点 · 71 条可核验来源",
+                "6 类骗局 · 18 本剧本 · 424 个剧情节点 · 73 条可核验来源",
                 10, R.color.ink_hint);
         footer.setGravity(Gravity.CENTER);
         footer.setPadding(0, Ui.dp(activity, 16), 0, Ui.dp(activity, 6));

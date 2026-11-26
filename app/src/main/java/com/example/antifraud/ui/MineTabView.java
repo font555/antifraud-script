@@ -193,7 +193,7 @@ public class MineTabView extends LinearLayout {
         });
         list.addView(clearRow);
 
-        LinearLayout sourceRow = settingRow("真实案例来源库", "71 条可核验");
+        LinearLayout sourceRow = settingRow("真实案例来源库", "73 条可核验");
         sourceRow.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
