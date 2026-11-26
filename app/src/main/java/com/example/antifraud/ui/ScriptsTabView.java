@@ -210,31 +210,27 @@ public class ScriptsTabView extends FrameLayout {
         header.addView(searchRow, lp);
     }
 
-    /** 分类筛选 chips：全部 + 六个分类，超出屏幕宽度可横向滑动 */
+    /** 分类筛选 chips：全部 + 六个分类。放不下时自动折行，不要求用户左右滑动 */
     private void buildChipRow(LinearLayout header) {
-        HorizontalScrollView hsv = new HorizontalScrollView(activity);
-        hsv.setHorizontalScrollBarEnabled(false);
-        hsv.setOverScrollMode(View.OVER_SCROLL_NEVER);
-
-        LinearLayout chipRow = new LinearLayout(activity);
-        chipRow.setOrientation(LinearLayout.HORIZONTAL);
+        // 原来是 HorizontalScrollView + 一行排开，2.1 倍字号下只能看到两个分类，
+        // 剩下的必须手动往右划。改成 FlowLayout 后自动换成 2-3 行，全部可见。
+        FlowLayout chipRow = new FlowLayout(activity);
+        chipRow.setGaps(SettingsStore.scaleBox(activity, Ui.dp(activity, 8)),
+                SettingsStore.scaleBox(activity, Ui.dp(activity, 8)));
 
         chipAll = makeChip("全部", null);
-        chipRow.addView(chipAll, chipLayoutParams());
+        chipRow.addView(chipAll);
         for (Category c : categories) {
             TextView chip = makeChip(c.name, c.id);
             chipById.put(c.id, chip);
-            chipRow.addView(chip, chipLayoutParams());
+            chipRow.addView(chip);
         }
-
-        hsv.addView(chipRow, new HorizontalScrollView.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.topMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 8));
         lp.bottomMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 6));
-        header.addView(hsv, lp);
+        header.addView(chipRow, lp);
     }
 
     private LinearLayout.LayoutParams chipLayoutParams() {
@@ -248,13 +244,18 @@ public class ScriptsTabView extends FrameLayout {
     private TextView makeChip(String label, final String categoryId) {
         TextView chip = new PTextView(activity);
         chip.setText(label);
-        chip.setTextSize(12);
+        // chip 的字号不像正文那样全量放大：分类名最多 5 个字，字号全放大后
+        // 一个块就占掉半个屏幕，7 个分类会折成五六行把列表挤没。
+        // 这里按档位给一个较小的字号，保证 7 个块能折成 2-3 行。
+        float fs = SettingsStore.fontScale(activity);
+        chip.setTextSize(fs >= 1.9f ? 10f : (fs >= 1.45f ? 11f : 12f));
         chip.setGravity(Gravity.CENTER);
         chip.setSingleLine(true);
-        // chip 是最典型的「固定高度装文字」：2.1 倍下 12sp 约 25px，44dp 的框才不裁字
-        chip.setMinHeight(SettingsStore.scaleBox(activity, Ui.dp(activity, 44)));
-        int padH = SettingsStore.scaleBox(activity, Ui.dp(activity, 12));
-        int padV = SettingsStore.scaleBox(activity, Ui.dp(activity, 7));
+        // 高度跟着字号长（否则 2.1 倍时字被裁），但内边距横向只给固定值，
+        // 不再按倍数放大——横向 padding 放大是"一行只放得下一个"的主因。
+        chip.setMinHeight(SettingsStore.scaleBox(activity, Ui.dp(activity, 40)));
+        int padH = Ui.dp(activity, 14);
+        int padV = SettingsStore.scaleBox(activity, Ui.dp(activity, 6));
         chip.setPadding(padH, padV, padH, padV);
         chip.setOnClickListener(new View.OnClickListener() {
             @Override

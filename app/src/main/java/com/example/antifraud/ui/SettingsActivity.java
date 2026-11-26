@@ -64,22 +64,22 @@ public class SettingsActivity extends BaseActivity {
         // ---- 字号 ----
         LinearLayout sizeCard = scaledCard(14, 12);
         sizeCard.addView(Ui.text(this, "字号大小", 12, R.color.ink));
-        HorizontalScrollView sizeScroll = new HorizontalScrollView(this);
-        sizeScroll.setHorizontalScrollBarEnabled(false);
-        LinearLayout.LayoutParams scrollLp = new LinearLayout.LayoutParams(
+        // 用 FlowLayout 自动折行：4 个档位在「超大」字号下一行放不下，
+        // 会自动掉到第二行，不需要用户左右滑动
+        FlowLayout sizeRow = new FlowLayout(this);
+        LinearLayout.LayoutParams sizeLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        scrollLp.topMargin = SettingsStore.scaleBox(this, Ui.dp(this, 10));
-        sizeScroll.setLayoutParams(scrollLp);
-        LinearLayout sizeRow = new LinearLayout(this);
-        sizeRow.setOrientation(LinearLayout.HORIZONTAL);
+        sizeLp.topMargin = SettingsStore.scaleBox(this, Ui.dp(this, 10));
+        sizeRow.setLayoutParams(sizeLp);
+        sizeRow.setGaps(SettingsStore.scaleBox(this, Ui.dp(this, 6)),
+                SettingsStore.scaleBox(this, Ui.dp(this, 6)));
         float curScale = SettingsStore.fontScale(this);
         // 四档：标准 1.0 / 大 1.3 / 特大 1.7 / 超大 2.1（超大 = 标准的两倍再多一点）
         sizeRow.addView(sizeChip("标准", near(curScale, SettingsStore.SCALE_STANDARD), SettingsStore.SCALE_STANDARD));
         sizeRow.addView(sizeChip("大", near(curScale, SettingsStore.SCALE_LARGE), SettingsStore.SCALE_LARGE));
         sizeRow.addView(sizeChip("特大", near(curScale, SettingsStore.SCALE_XLARGE), SettingsStore.SCALE_XLARGE));
         sizeRow.addView(sizeChip("超大", near(curScale, SettingsStore.SCALE_HUGE), SettingsStore.SCALE_HUGE));
-        sizeScroll.addView(sizeRow);
-        sizeCard.addView(sizeScroll);
+        sizeCard.addView(sizeRow);
         TextView sizeHint = Ui.text(this, "调大后所有页面的文字和按钮都会跟着变大；「超大」约为标准的两倍，适合视力不便的使用者。", 9, R.color.ink_hint);
         sizeHint.setPadding(0, SettingsStore.scaleBox(this, Ui.dp(this, 8)), 0, 0);
         sizeHint.setLineSpacing(SettingsStore.scaleBox(this, Ui.dp(this, 3)), 1f);
