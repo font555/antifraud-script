@@ -92,36 +92,22 @@ public class Tips {
         return sb.toString();
     }
 
-    /** 弹窗：8 句口诀 + 解释，可滚动（零依赖，用系统 AlertDialog） */
+    /** 弹窗：8 句口诀 + 解释，像素风、可滚动 */
     public static void showAll(Activity a) {
         List<Tip> tips = load(a);
         if (tips.isEmpty()) {
             return;
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append("背下 8 个字，记住 8 个动作：\n\n");
+        // 用像素风 PixelDialog，替掉系统 AlertDialog（白底圆角跟整体风格不搭，
+        // 且 2.1 倍字号下正文会撑出屏幕、按钮被挤掉）
+        PixelDialog dlg = PixelDialog.create(a);
+        dlg.title("反诈口诀 · 全部 8 句");
+        dlg.meta("背下 8 个字，记住 8 个动作。");
         for (Tip t : tips) {
-            sb.append("「").append(t.key).append("」").append(t.sub).append("\n");
-            sb.append(t.text).append("\n\n");
+            dlg.field("「" + t.key + "」" + t.sub, t.text);
         }
-        sb.append("遇到拿不准的事：先挂断、先问家长老师、打 110 或 96110。");
-
-        TextView body = new TextView(a);
-        Ui.pixel(body);
-        body.setTextSize(11);
-        body.setTextColor(a.getColor(R.color.ink_secondary));
-        body.setLineSpacing(Ui.dp(a, 4), 1f);
-        body.setText(sb.toString());
-        int pad = Ui.dp(a, 16);
-        body.setPadding(pad, pad, pad, pad);
-
-        ScrollView scroll = new ScrollView(a);
-        scroll.addView(body);
-
-        new android.app.AlertDialog.Builder(a)
-                .setTitle("反诈口诀 · 全部 8 句")
-                .setView(scroll)
-                .setPositiveButton("记住了", null)
-                .show();
+        dlg.body("遇到拿不准的事：先挂断、先问家长老师、打 110 或 96110。");
+        dlg.button("记住了", true, null, 0);
+        dlg.show();
     }
 }

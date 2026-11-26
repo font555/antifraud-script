@@ -680,33 +680,33 @@ public class ChatActivity extends BaseActivity {
     }
 
     private void confirmRestart() {
-        new AlertDialog.Builder(this)
-                .setTitle("重来一次？")
-                .setMessage("当前进度会被清空。")
-                .setPositiveButton("重来", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        AppLog.i("CHAT", "重来按钮 清空进度 原损失 ￥"
-                                + recorder.totalCost() + " 步数 " + recorder.getSteps().size());
-                        startScript();
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
+        PixelDialog dlg = PixelDialog.create(this);
+        dlg.title("重来一次？");
+        dlg.body("当前进度会被清空，损失金额也会归零。");
+        dlg.button("重来", true, new PixelDialog.OnAction() {
+            @Override
+            public void onAction(int index) {
+                AppLog.i("CHAT", "重来按钮 清空进度 原损失 ￥"
+                        + recorder.totalCost() + " 步数 " + recorder.getSteps().size());
+                startScript();
+            }
+        }, 0);
+        dlg.button("取消", false, null, 1);
+        dlg.show();
     }
 
     @Override
     public void onBackPressed() {
-        new AlertDialog.Builder(this)
-                .setTitle("退出这个剧本？")
-                .setMessage("进度不会保存。")
-                .setPositiveButton("退出", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        finish();
-                    }
-                })
-                .setNegativeButton("继续玩", null)
-                .show();
+        PixelDialog dlg = PixelDialog.create(this);
+        dlg.title("退出这个剧本？");
+        dlg.body("进度不会保存。");
+        dlg.button("退出", true, new PixelDialog.OnAction() {
+            @Override
+            public void onAction(int index) {
+                finish();
+            }
+        }, 0);
+        dlg.button("继续玩", false, null, 1);
+        dlg.show();
     }
 }

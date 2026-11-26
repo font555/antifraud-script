@@ -117,13 +117,13 @@ public class GuideOverlay extends FrameLayout {
         tipTitle = new TextView(c);
         tipTitle.setTextColor(c.getColor(R.color.brand));
         Ui.pixel(tipTitle);
-        tipTitle.setTextSize(13);
+        setPx(tipTitle, 13f, 19f);
         tip.addView(tipTitle);
 
         tipDesc = new TextView(c);
         tipDesc.setTextColor(c.getColor(R.color.ink_secondary));
         Ui.pixel(tipDesc);
-        tipDesc.setTextSize(10);
+        setPx(tipDesc, 10f, 15f);
         tipDesc.setLineSpacing(SettingsStore.scaleBox(c, Ui.dp(c, 4)), 1f);
         LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -139,7 +139,7 @@ public class GuideOverlay extends FrameLayout {
         row.setLayoutParams(rlp);
 
         tipNext = new TextView(c);
-        tipNext.setTextSize(11);
+        setPx(tipNext, 11f, 16f);
         tipNext.setTextColor(c.getColor(R.color.white));
         Ui.pixel(tipNext);
         tipNext.setBackgroundResource(R.drawable.px_button);
@@ -163,7 +163,7 @@ public class GuideOverlay extends FrameLayout {
 
         skipBar = new TextView(c);
         skipBar.setText("跳过引导");
-        skipBar.setTextSize(11);
+        setPx(skipBar, 11f, 15f);
         Ui.pixel(skipBar);
         skipBar.setTextColor(c.getColor(R.color.ink_hint));
         skipBar.setGravity(Gravity.CENTER);
@@ -183,6 +183,22 @@ public class GuideOverlay extends FrameLayout {
         slp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
         slp.bottomMargin = Ui.dp(c, 34);
         addView(skipBar, slp);
+    }
+
+    /**
+     * 按「像素」设置字号，绕开 sp 的二次放大。
+     *
+     * <p><b>关键：</b>BaseActivity 已经把 Configuration.fontScale 设成用户选的倍数，
+     * 所以 {@code setTextSize(19f)} 里的 19 是 sp，实际渲染会是 19 × 2.1 ≈ 40sp——
+     * 上一版"封顶 19sp"因此完全失效，卡片依然巨大。</p>
+     *
+     * <p>这里用 COMPLEX_UNIT_PX 直接画像素字号：baseSp 乘「1.5 倍封顶」的缩放，
+     * 再乘屏幕密度得到真实像素，不再被 fontScale 二次放大。</p>
+     */
+    private void setPx(TextView tv, float baseSp, float maxSp) {
+        float sp = Math.min(maxSp, baseSp * Math.min(1.5f, SettingsStore.fontScale(getContext())));
+        float px = sp * getResources().getDisplayMetrics().density;
+        tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, px);
     }
 
     /** 宿主传入底部固定栏高度（dp），「跳过引导」会放在它上方，不压住 Tab 栏 */

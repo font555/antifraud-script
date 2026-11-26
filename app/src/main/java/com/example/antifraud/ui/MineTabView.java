@@ -356,31 +356,29 @@ public class MineTabView extends LinearLayout {
     // ---------------- 弹窗 ----------------
 
     private void confirmClear() {
-        new AlertDialog.Builder(a)
-                .setTitle("清除本地记录？")
-                .setMessage("会清空昵称、头像和阅读记录；我写的剧本和案例来源不受影响。")
-                .setPositiveButton("清除", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface d, int which) {
-                        UserStore.reset(a);
-                        host.onDataChanged();
-                        host.toast("已清除");
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
+        PixelDialog dlg = PixelDialog.create(a);
+        dlg.title("清除本地记录？");
+        dlg.body("会清空昵称、头像和阅读记录；我写的剧本和案例来源不受影响。");
+        dlg.button("清除", true, new PixelDialog.OnAction() {
+            @Override
+            public void onAction(int index) {
+                UserStore.reset(a);
+                host.onDataChanged();
+                host.toast("已清除");
+            }
+        }, 0);
+        dlg.button("取消", false, null, 1);
+        dlg.show();
     }
 
     private void showAbout() {
-        new AlertDialog.Builder(a)
-                .setTitle("关于《反诈剧本杀》")
-                .setMessage("作品：反诈剧本杀\n"
-                        + "赛道：世界职业院校技能大赛 · 新一代信息技术赛道 · 中职组\n\n"
-                        + "零第三方依赖 · 零权限 · 零联网\n"
-                        + "案例据公开报道改编，人物已匿名、平台名已虚构。\n"
-                        + "本作品为教学演示，与任何机构无隶属关系。")
-                .setPositiveButton("知道了", null)
-                .show();
+        PixelDialog dlg = PixelDialog.create(a);
+        dlg.title("关于《反诈剧本杀》");
+        dlg.field("赛道", "世界职业院校技能大赛 · 新一代信息技术赛道 · 中职组");
+        dlg.field("技术特点", "零第三方依赖 · 零权限 · 零联网");
+        dlg.body("案例据公开报道改编，人物已匿名、平台名已虚构。本作品为教学演示，与任何机构无隶属关系。");
+        dlg.button("知道了", true, null, 0);
+        dlg.show();
     }
 
     // ---------------- 小工具 ----------------

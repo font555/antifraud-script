@@ -103,6 +103,7 @@ public final class PixelDialog {
 
     public PixelDialog title(String text) {
         TextView tv = Ui.text(activity, text, 15, R.color.ink);
+        applyText(tv, 15f, 22f);
         tv.setLineSpacing(Ui.dp(activity, 3), 1f);
         content.addView(tv, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -119,6 +120,7 @@ public final class PixelDialog {
     /** 小字灰色说明（来源、日期等） */
     public PixelDialog meta(String text) {
         TextView tv = Ui.text(activity, text, 10, R.color.ink_hint);
+        applyText(tv, 10f, 15f);
         tv.setLineSpacing(Ui.dp(activity, 3), 1f);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -130,6 +132,7 @@ public final class PixelDialog {
     /** 正文（自动换行、行距放宽） */
     public PixelDialog body(String text) {
         TextView tv = Ui.text(activity, text, 12, R.color.ink);
+        applyText(tv, 12f, 18f);
         tv.setLineSpacing(Ui.dp(activity, 5), 1f);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -148,8 +151,10 @@ public final class PixelDialog {
         box.setLayoutParams(blp);
 
         TextView lab = Ui.text(activity, label, 10, R.color.ink_hint);
+        applyText(lab, 10f, 15f);
         box.addView(lab);
         TextView val = Ui.text(activity, value, 11, R.color.ink_secondary);
+        applyText(val, 11f, 16f);
         val.setLineSpacing(Ui.dp(activity, 4), 1f);
         val.setPadding(0, Ui.dp(activity, 4), 0, 0);
         box.addView(val);
@@ -178,9 +183,11 @@ public final class PixelDialog {
         texts.setLayoutParams(new LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         TextView t = Ui.text(activity, title, 13, R.color.ink);
+        applyText(t, 13f, 19f);
         texts.addView(t);
         if (desc != null && !desc.isEmpty()) {
             TextView d = Ui.text(activity, desc, 10, R.color.ink_hint);
+            applyText(d, 10f, 15f);
             d.setPadding(0, SettingsStore.scaleBox(activity, Ui.dp(activity, 3)), 0, 0);
             d.setLineSpacing(Ui.dp(activity, 2), 1f);
             texts.addView(d);
@@ -213,7 +220,9 @@ public final class PixelDialog {
         TextView btn = new TextView(activity);
         Ui.pixel(btn);
         btn.setText(label);
-        btn.setTextSize(12);
+        // 按钮文字不跟着字号全量放大：2.1 倍下「复制链接」会被压成一竖条。
+        // 这里给一个上限，按钮始终横向舒展、文字完整。
+        applyText(btn, 12f, 17f);
         btn.setGravity(Gravity.CENTER);
         btn.setMaxLines(1);
         btn.setBackgroundResource(primary ? R.drawable.px_button : R.drawable.px_option);
@@ -240,6 +249,25 @@ public final class PixelDialog {
         });
         buttonRow.addView(btn);
         return this;
+    }
+
+    /**
+     * 弹窗内文字的字号上限。
+     * 2.1 倍时若直接跟随，标题会到 31sp、按钮到 25sp，一个按钮就占掉 3 行高度。
+     * 这里把弹窗里的字号压到 1.5 倍封顶，既照顾视力，又保证按钮/字段排得下。
+     */
+    private float dialogScale() {
+        return Math.min(1.5f, SettingsStore.fontScale(activity));
+    }
+
+    /**
+     * 弹窗字号统一走 px：BaseActivity 的 fontScale 会把 setTextSize(sp) 再乘一次，
+     * 直接用 sp 会让「封顶 1.5 倍」失效（20sp × 2.1 = 42sp，按钮被压扁）。
+     */
+    private void applyText(TextView tv, float baseSp, float maxSp) {
+        float sp = Math.min(maxSp, baseSp * dialogScale());
+        tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
+                sp * activity.getResources().getDisplayMetrics().density);
     }
 
     public PixelDialog cancelable() {
