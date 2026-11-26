@@ -7,10 +7,9 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
+import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.example.antifraud.R;
@@ -21,22 +20,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 聚光灯式新手引导。
+ * 聚光灯新手引导（v5.9 重写）。
  *
- * <p>v3.1 重做定位规则，解决四个体验问题：</p>
+ * <p><b>为什么重写：</b>旧版有三个结构性问题——</p>
  * <ol>
- *   <li><b>说明卡不再压住高亮内容</b>：先压缩过高的高亮框（超过屏幕 40% 就截断），
- *       再在剩下的上/下空间里挑一块放不重叠的卡片；都放不下才折中贴边放。</li>
- *   <li><b>切 Tab 不再割裂</b>：先切页并等目标控件量出尺寸，再淡入卡片，卡片出现时页面已经就位。</li>
- *   <li><b>「跳过引导」不压 Tab 栏</b>：按钮上移到 Tab 栏上方（由宿主传入底部安全高度）。</li>
- *   <li>引导结束由宿主切回首页（见 MainActivity）。</li>
+ *   <li><b>卡顿</b>：旧版用 {@code post(Runnable)} 无延时自旋轮询，最多连转 12 帧；
+ *       每一步还要 340ms 固定等待 + 160ms 淡入，五步下来近 3 秒纯等待。
+ *       现在改成「布局回调 + 兜底超时」：目标控件一旦量出尺寸立刻显示，正常情况下
+ *       一帧内完成，不再有固定等待。</li>
+ *   <li><b>离开页面就再也不会出现</b>：旧版在 {@code onPause} 里调 {@code finish()}，
+ *       而 finish 会写入「已看过」。用户第一次进入时只要锁屏、切后台、接个电话，
+ *       引导就永久消失。现在区分 {@link #finish()}（正常看完才记录）和
+ *       {@link #abort()}（被打断，不记录，下次再来）。</li>
+ *   <li><b>步骤编号错乱</b>：旧版 {@code addStep(null, ...)} 会静默丢弃该步，
+ *       但界面上的「下一步 3/5」仍按 5 步算。现在 null 目标不再丢步，
+ *       而是显示为「无高亮的纯说明卡」，编号始终连续正确。</li>
  * </ol>
- * 另外保留三重保险：点遮罩任意处继续、固定跳过按钮、超时自动结束。
+ *
+ * <p>交互约定：整层吞掉触摸（点空白不推进、也不会误触下层页面），只有
+ * 「下一步 / 知道了」能前进；「跳过引导」需二次确认。</p>
  */
 public class GuideOverlay extends FrameLayout {
 
     public interface OnFinish {
-        void onFinish();
+        /** @param completed true = 看完 / 主动跳过（要记录）；false = 被打断（不记录） */
+        void onFinish(boolean completed);
     }
 
     /** 每一步显示前先做准备（比如先切到对应的 Tab） */
@@ -44,8 +52,10 @@ public class GuideOverlay extends FrameLayout {
         void onPrepare(int index);
     }
 
-    private static final long STEP_TIMEOUT_MS = 2200;
-    private static final int MAX_ATTEMPTS = 12;
+    /** 目标控件一直没准备好时的兜底：超过这个时间就跳过该步，避免卡死在光秃秃的遮罩上 */
+    private static final long TARGET_WAIT_TIMEOUT_MS = 1500;
+    /** 目标控件在屏幕内判定时的最小可见面积比例 */
+    private static final float MIN_VISIBLE_RATIO = 0.15f;
 
     private static class Step {
         final View target;
@@ -66,21 +76,26 @@ public class GuideOverlay extends FrameLayout {
     private final SpotlightView spotlight;
     private final LinearLayout tip;
     private final TextView skipBar;
+    private final TextView tipTitle;
+    private final TextView tipDesc;
+    private final TextView tipNext;
+
     private int index = 0;
-    private int attempts = 0;
-    private int bottomInsetDp = 0;
+    private int bottomInsetPx = 0;
     private boolean finished = false;
-    private boolean prepared = false;
-    private boolean shownThisStep = false;
-    private OnPrepareChain prepareChain;
+    private boolean started = false;
     private OnStepPrepare preparer;
     private OnFinish callback;
+
+    /** 当前步的等待任务，切步时取消，避免旧任务把新步的卡片位置改坏 */
+    private Runnable pendingShow;
+    private ViewTreeObserver.OnGlobalLayoutListener layoutListener;
 
     public GuideOverlay(Context c) {
         super(c);
         setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        // 整层吞掉触摸：点空白处既不会推进、也不会误触下面的页面，只能点「下一步」
+        // 整层吞掉触摸：点空白处既不推进、也不误触下层页面
         setClickable(true);
         setOnTouchListener(new OnTouchListener() {
             @Override
@@ -90,10 +105,59 @@ public class GuideOverlay extends FrameLayout {
         });
 
         spotlight = new SpotlightView(c);
-        // 遮罩不响应点击：只有「下一步」能推进，避免手一偏就跳步
         addView(spotlight, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
-        tip = buildTip();
+        // 说明卡：固定三块（标题 / 正文 / 按钮行），建一次复用，不再每步重建
+        tip = new LinearLayout(c);
+        tip.setOrientation(LinearLayout.VERTICAL);
+        tip.setBackgroundResource(R.drawable.px_panel);
+        int pad = SettingsStore.scaleBox(c, Ui.dp(c, 14));
+        tip.setPadding(pad, pad, pad, pad);
+
+        tipTitle = new TextView(c);
+        tipTitle.setTextColor(c.getColor(R.color.brand));
+        Ui.pixel(tipTitle);
+        tipTitle.setTextSize(13);
+        tip.addView(tipTitle);
+
+        tipDesc = new TextView(c);
+        tipDesc.setTextColor(c.getColor(R.color.ink_secondary));
+        Ui.pixel(tipDesc);
+        tipDesc.setTextSize(10);
+        tipDesc.setLineSpacing(SettingsStore.scaleBox(c, Ui.dp(c, 4)), 1f);
+        LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        dlp.topMargin = SettingsStore.scaleBox(c, Ui.dp(c, 8));
+        tip.addView(tipDesc, dlp);
+
+        LinearLayout row = new LinearLayout(c);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.END);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        rlp.topMargin = SettingsStore.scaleBox(c, Ui.dp(c, 12));
+        row.setLayoutParams(rlp);
+
+        tipNext = new TextView(c);
+        tipNext.setTextSize(11);
+        tipNext.setTextColor(c.getColor(R.color.white));
+        Ui.pixel(tipNext);
+        tipNext.setBackgroundResource(R.drawable.px_button);
+        int np = SettingsStore.scaleBox(c, Ui.dp(c, 10));
+        tipNext.setPadding(SettingsStore.scaleBox(c, Ui.dp(c, 18)), np,
+                SettingsStore.scaleBox(c, Ui.dp(c, 18)), np);
+        tipNext.setMinHeight(SettingsStore.scaleBox(c, Ui.dp(c, 44)));
+        tipNext.setMinWidth(SettingsStore.scaleBox(c, Ui.dp(c, 96)));
+        tipNext.setGravity(Gravity.CENTER);
+        tipNext.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                nextStep();
+            }
+        });
+        row.addView(tipNext);
+        tip.addView(row);
+
         tip.setVisibility(INVISIBLE);
         addView(tip, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
 
@@ -103,8 +167,11 @@ public class GuideOverlay extends FrameLayout {
         Ui.pixel(skipBar);
         skipBar.setTextColor(c.getColor(R.color.ink_hint));
         skipBar.setGravity(Gravity.CENTER);
-        skipBar.setPadding(Ui.dp(c, 18), Ui.dp(c, 10), Ui.dp(c, 18), Ui.dp(c, 10));
+        int sp = SettingsStore.scaleBox(c, Ui.dp(c, 10));
+        skipBar.setPadding(SettingsStore.scaleBox(c, Ui.dp(c, 18)), sp,
+                SettingsStore.scaleBox(c, Ui.dp(c, 18)), sp);
         skipBar.setBackgroundResource(R.drawable.px_panel);
+        skipBar.setMinimumHeight(SettingsStore.scaleBox(c, Ui.dp(c, 40)));
         skipBar.setClickable(true);
         skipBar.setOnClickListener(new OnClickListener() {
             @Override
@@ -120,9 +187,9 @@ public class GuideOverlay extends FrameLayout {
 
     /** 宿主传入底部固定栏高度（dp），「跳过引导」会放在它上方，不压住 Tab 栏 */
     public void setBottomInsetDp(int dp) {
-        bottomInsetDp = dp;
+        bottomInsetPx = Ui.dp(getContext(), dp);
         LayoutParams lp = (LayoutParams) skipBar.getLayoutParams();
-        lp.bottomMargin = Ui.dp(getContext(), 14 + bottomInsetDp);
+        lp.bottomMargin = Ui.dp(getContext(), 14) + bottomInsetPx;
         skipBar.setLayoutParams(lp);
     }
 
@@ -137,9 +204,9 @@ public class GuideOverlay extends FrameLayout {
      *                     传 0.55 就只圈上面一半多，避免高亮区大片空白
      */
     public GuideOverlay addStep(View target, String title, String desc, float holeFraction) {
-        if (target != null) {
-            steps.add(new Step(target, title, desc, holeFraction));
-        }
+        // 注意：target 为 null 也照样入列（显示为无高亮的纯说明卡），
+        // 否则步骤总数会变，界面上的「3/5」就和实际不符了。
+        steps.add(new Step(target, title, desc, holeFraction));
         return this;
     }
 
@@ -149,66 +216,255 @@ public class GuideOverlay extends FrameLayout {
     }
 
     public void start(OnFinish cb) {
+        if (started) {
+            return;
+        }
+        started = true;
         callback = cb;
         index = 0;
         if (steps.isEmpty()) {
             finish();
             return;
         }
+        // 等遮罩自己挂到窗口并量出尺寸后再显示第一步
+        addOnLayoutChangeListener(new OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int l, int t, int r, int b,
+                                       int ol, int ot, int or, int ob) {
+                if (getWidth() > 0 && getHeight() > 0) {
+                    removeOnLayoutChangeListener(this);
+                    showStep(0);
+                }
+            }
+        });
+        // 极端情况：遮罩没收到布局回调（比如父容器 0 尺寸），兜底也要往下走
         postDelayed(new Runnable() {
             @Override
             public void run() {
-                tryShow();
+                if (!finished && tip.getVisibility() != VISIBLE && index == 0) {
+                    showStep(0);
+                }
             }
-        }, 200);
+        }, 400);
     }
 
-    /** 每一步：先准备（切 Tab）→ 等目标控件量出来 → 再定位卡片 */
-    private void tryShow() {
+    /** 显示第 i 步：先准备（切 Tab）→ 等目标就绪 → 布局卡片。全程无固定延时 */
+    private void showStep(final int i) {
         if (finished) {
             return;
         }
-        if (!prepared) {
-            prepared = true;
-            attempts = 0;
-            shownThisStep = false;
-            tip.setVisibility(INVISIBLE);
-            if (preparer != null) {
-                preparer.onPrepare(index);
+        index = i;
+        cancelPending();
+
+        // 切步时先把卡片藏起来，避免它停留在上一步的位置"闪一下"
+        tip.setVisibility(INVISIBLE);
+
+        if (preparer != null) {
+            preparer.onPrepare(i);
+        }
+
+        final Step step = steps.get(i);
+        if (step.target == null) {
+            // 没有目标控件：直接显示纯说明卡（居中）
+            layoutTip(null);
+            markShown(i);
+            return;
+        }
+
+        // 目标就绪判定：已挂载、有尺寸、在窗口内可见
+        if (isTargetReady(step.target)) {
+            layoutTip(step.target);
+            markShown(i);
+            return;
+        }
+
+        // 还没就绪：挂一个一次性布局监听 + 兜底超时（不再自旋轮询）
+        final View target = step.target;
+        layoutListener = new ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override
+            public void onGlobalLayout() {
+                if (finished) {
+                    return;
+                }
+                if (isTargetReady(target)) {
+                    removeLayoutListener();
+                    cancelPending();
+                    layoutTip(target);
+                    markShown(i);
+                }
             }
-            // 等一脚布局：Tab 切换后目标控件才有正确坐标
-            postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    tryShow();
-                }
-            }, 340);
-            return;
-        }
-        View target = steps.get(index).target;
-        boolean onScreen = target.isShown() && target.getGlobalVisibleRect(new Rect())
-                && target.getWindowVisibility() == View.VISIBLE;
-        boolean ready = getWidth() > 0 && getHeight() > 0
-                && target.getWidth() > 0 && target.getHeight() > 0 && onScreen;
-        if (!ready && attempts++ < MAX_ATTEMPTS) {
-            post(new Runnable() {
-                @Override
-                public void run() {
-                    tryShow();
-                }
-            });
-            return;
-        }
-        doShow();
-        postDelayed(new Runnable() {
+        };
+        target.getViewTreeObserver().addOnGlobalLayoutListener(layoutListener);
+
+        pendingShow = new Runnable() {
             @Override
             public void run() {
-                if (!finished && !shownThisStep) {
-                    AppLog.i("GUIDE", "第 " + (index + 1) + " 步未能显示，自动结束引导");
-                    finish();
+                if (finished) {
+                    return;
+                }
+                removeLayoutListener();
+                // 超时还没就绪：有坐标就按当前坐标硬画，彻底没有就跳过这一步
+                if (isTargetReady(target)) {
+                    layoutTip(target);
+                    markShown(i);
+                } else {
+                    AppLog.i("GUIDE", "第 " + (i + 1) + " 步目标未就绪，跳过");
+                    advanceOrFinish();
                 }
             }
-        }, STEP_TIMEOUT_MS);
+        };
+        postDelayed(pendingShow, TARGET_WAIT_TIMEOUT_MS);
+    }
+
+    /** 第一步刚显示时记录一次，用于"是否真的显示出来"的兜底 */
+    private void markShown(int i) {
+        AppLog.i("GUIDE", "显示第 " + (i + 1) + "/" + steps.size() + " 步："
+                + steps.get(i).title);
+    }
+
+    private boolean isTargetReady(View target) {
+        if (target == null || target.getWindowVisibility() != VISIBLE) {
+            return false;
+        }
+        if (target.getWidth() <= 0 || target.getHeight() <= 0) {
+            return false;
+        }
+        Rect visible = new Rect();
+        if (!target.getGlobalVisibleRect(visible)) {
+            return false;
+        }
+        // 大面积被裁掉（比如藏在滚动区外）时不算就绪，避免高亮框画到屏幕外
+        float fullArea = target.getWidth() * (float) target.getHeight();
+        float visibleArea = visible.width() * (float) visible.height();
+        return fullArea > 0 && visibleArea / fullArea >= MIN_VISIBLE_RATIO;
+    }
+
+    private void layoutTip(View target) {
+        int screenW = getWidth() > 0 ? getWidth() : getResources().getDisplayMetrics().widthPixels;
+        int screenH = getHeight() > 0 ? getHeight() : getResources().getDisplayMetrics().heightPixels;
+        int margin = SettingsStore.scaleBox(getContext(), Ui.dp(getContext(), 14));
+        // 底部要同时容下「跳过引导」按钮和它下面的留白
+        int skipH = skipBar.getHeight() > 0
+                ? skipBar.getHeight()
+                : SettingsStore.scaleBox(getContext(), Ui.dp(getContext(), 40));
+        int bottomLimit = screenH - bottomInsetPx - Ui.dp(getContext(), 14) - skipH
+                - SettingsStore.scaleBox(getContext(), Ui.dp(getContext(), 10));
+        int topLimit = Ui.dp(getContext(), 14);
+
+        RectF hole = null;
+        if (target != null) {
+            int[] loc = new int[2];
+            target.getLocationInWindow(loc);
+            int[] mine = new int[2];
+            getLocationInWindow(mine);
+            int pad = SettingsStore.scaleBox(getContext(), Ui.dp(getContext(), 6));
+            float left = loc[0] - mine[0] - pad;
+            float top = loc[1] - mine[1] - pad;
+            float right = left + target.getWidth() + pad * 2;
+            float bottom = top + target.getHeight() + pad * 2;
+
+            // 夹到可用区域内；注意：夹的时候不裁剪高度，只平移
+            if (left < margin) {
+                left = margin;
+            }
+            if (right > screenW - margin) {
+                right = screenW - margin;
+            }
+            if (top < topLimit) {
+                top = topLimit;
+            }
+            if (bottom > bottomLimit) {
+                bottom = bottomLimit;
+            }
+            if (right - left < Ui.dp(getContext(), 40)) {
+                right = Math.min(screenW - margin, left + Ui.dp(getContext(), 40));
+            }
+            hole = new RectF(left, top, right, bottom);
+
+            // holeFraction < 1：只圈目标的上半部分（剧本列表这种整屏目标用）
+            if (steps.get(index).holeFraction < 1f) {
+                float maxH = hole.height() * steps.get(index).holeFraction;
+                if (hole.height() > maxH) {
+                    hole.bottom = hole.top + maxH;
+                }
+            }
+        }
+
+        // 填内容
+        tipTitle.setText(steps.get(index).title);
+        tipDesc.setText(steps.get(index).desc);
+        tipNext.setText(index == steps.size() - 1
+                ? "知道了" : "下一步  " + (index + 1) + "/" + steps.size());
+
+        // 量卡片
+        int cardMaxW = screenW - margin * 2;
+        tip.measure(MeasureSpec.makeMeasureSpec(cardMaxW, MeasureSpec.AT_MOST),
+                MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+        int tw = tip.getMeasuredWidth();
+        int th = tip.getMeasuredHeight();
+        // 卡片不能比可用高度还高，否则会压住跳过按钮
+        int availH = bottomLimit - topLimit;
+        if (th > availH) {
+            th = availH;
+        }
+
+        int x;
+        int y;
+        if (hole == null) {
+            // 无目标：居中显示
+            x = (screenW - tw) / 2;
+            y = Math.max(topLimit, (screenH - th) / 2);
+        } else {
+            int gap = SettingsStore.scaleBox(getContext(), Ui.dp(getContext(), 10));
+            int spaceBelow = (int) (bottomLimit - hole.bottom);
+            int spaceAbove = (int) (hole.top - topLimit);
+            if (spaceBelow >= th + gap) {
+                y = (int) hole.bottom + gap;
+            } else if (spaceAbove >= th + gap) {
+                y = (int) hole.top - gap - th;
+            } else if (spaceBelow >= spaceAbove) {
+                y = bottomLimit - th;
+            } else {
+                y = topLimit;
+            }
+            // 卡片横向对齐高亮框，再夹进屏幕
+            x = Math.round(hole.left);
+            if (x + tw > screenW - margin) {
+                x = screenW - margin - tw;
+            }
+            if (x < margin) {
+                x = margin;
+            }
+        }
+
+        spotlight.setHole(hole);
+
+        // 直接设置位置与尺寸（避免 setX/setY 引起二次布局抖动）
+        LayoutParams lp = (LayoutParams) tip.getLayoutParams();
+        lp.width = tw;
+        lp.height = th;
+        lp.leftMargin = x;
+        lp.topMargin = y;
+        tip.setLayoutParams(lp);
+        tip.setAlpha(0f);
+        tip.setVisibility(VISIBLE);
+        tip.animate().alpha(1f).setDuration(130).start();
+        skipBar.setVisibility(VISIBLE);
+    }
+
+    private void nextStep() {
+        if (finished) {
+            return;
+        }
+        advanceOrFinish();
+    }
+
+    private void advanceOrFinish() {
+        if (index + 1 >= steps.size()) {
+            finish();
+            return;
+        }
+        showStep(index + 1);
     }
 
     /** 跳过前先确认，避免误触把引导关掉；引导结束后可在「我的 → 新手引导」重看 */
@@ -216,142 +472,44 @@ public class GuideOverlay extends FrameLayout {
         if (finished) {
             return;
         }
-        final Context ctx = getContext();
-        new android.app.AlertDialog.Builder(ctx)
-                .setTitle("跳过新手引导？")
-                .setMessage("跳过之后，可以在「我的 → 新手引导」里再看一遍。")
-                .setPositiveButton("跳过", new android.content.DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(android.content.DialogInterface dialog, int which) {
-                        finish();
-                    }
-                })
-                .setNegativeButton("继续看", null)
-                .show();
+        final PixelDialog dlg = PixelDialog.create((android.app.Activity) getContext());
+        dlg.title("跳过新手引导？");
+        dlg.body("跳过之后，可以在「我的 → 新手引导」里再看一遍。");
+        dlg.button("跳过", true, new PixelDialog.OnAction() {
+            @Override
+            public void onAction(int i) {
+                finish();
+            }
+        }, 0);
+        dlg.button("继续看", false, null, 1);
+        dlg.show();
     }
 
-    private void nextStep() {
-        if (finished) {
-            return;
-        }
-        index++;
-        if (index >= steps.size()) {
-            finish();
-            return;
-        }
-        prepared = false;
-        attempts = 0;
-        shownThisStep = false;
-        tip.setVisibility(INVISIBLE);
-        tryShow();
-    }
-
-    private void doShow() {
-        try {
-            Step step = steps.get(index);
-            int screenW = getResources().getDisplayMetrics().widthPixels;
-            int screenH = getResources().getDisplayMetrics().heightPixels;
-            int margin = Ui.dp(getContext(), 14);
-            // 底部给「跳过引导」按钮留一行，避免卡片和按钮叠在一起
-            int skipRow = Ui.dp(getContext(), 44);
-            int bottomLimit = screenH - Ui.dp(getContext(), 14 + bottomInsetDp) - skipRow;
-            int topLimit = Ui.dp(getContext(), 14);
-
-            int[] loc = new int[2];
-            step.target.getLocationInWindow(loc);
-            int[] mine = new int[2];
-            getLocationInWindow(mine);
-            int left = loc[0] - mine[0];
-            int top = loc[1] - mine[1];
-            int right = left + step.target.getWidth();
-            int bottom = top + step.target.getHeight();
-            int pad = Ui.dp(getContext(), 6);
-            RectF hole = new RectF(left - pad, top - pad, right + pad, bottom + pad);
-            // 夹在屏幕内
-            hole.left = Math.max(margin, hole.left);
-            hole.top = Math.max(topLimit, hole.top);
-            hole.right = Math.min(screenW - margin, hole.right);
-            hole.bottom = Math.min(bottomLimit, hole.bottom);
-            // 不截断高亮框：完整圈住目标（比如整个书架两排书）；
-            // 但剧本列表这种整屏目标可以按比例收窄，避免高亮区一大片空白
-            if (step.holeFraction < 1f) {
-                float maxH = hole.height() * step.holeFraction;
-                if (hole.height() > maxH) {
-                    hole.bottom = hole.top + maxH;
-                }
-            }
-            spotlight.setHole(hole);
-
-            ((TextView) tip.getChildAt(0)).setText(step.title);
-            ((TextView) tip.getChildAt(1)).setText(step.desc);
-            View rowView = tip.getChildAt(2);
-            if (rowView instanceof ViewGroup && ((ViewGroup) rowView).getChildCount() > 0) {
-                View btn = ((ViewGroup) rowView).getChildAt(0);
-                if (btn instanceof TextView) {
-                    ((TextView) btn).setText(index == steps.size() - 1
-                            ? "知道了" : "下一步  " + (index + 1) + "/" + steps.size());
-                }
-            }
-
-            // 大字号下卡片要更宽，否则文字一直换行、卡片会高到超出屏幕
-            float fs = SettingsStore.fontScale(getContext());
-            int wideDp = fs >= 1.9f ? 420 : (fs >= 1.45f ? 370 : 330);
-            int sideDp = fs >= 1.9f ? 24 : 56;
-            int cardMaxW = Math.min(screenW - Ui.dp(getContext(), sideDp),
-                    Ui.dp(getContext(), wideDp));
-            tip.measure(MeasureSpec.makeMeasureSpec(cardMaxW, MeasureSpec.AT_MOST),
-                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
-            int tw = tip.getMeasuredWidth();
-            int th = tip.getMeasuredHeight();
-
-            int spaceBelow = bottomLimit - (int) hole.bottom;
-            int spaceAbove = (int) hole.top - topLimit;
-            int y;
-            if (spaceBelow >= th + Ui.dp(getContext(), 12)) {
-                y = (int) hole.bottom + Ui.dp(getContext(), 12);
-            } else if (spaceAbove >= th + Ui.dp(getContext(), 12)) {
-                y = (int) hole.top - Ui.dp(getContext(), 12) - th;
-            } else if (spaceBelow >= spaceAbove) {
-                // 下方更宽裕：贴底放，尽量少压高亮
-                y = Math.min(bottomLimit - th, (int) hole.bottom + Ui.dp(getContext(), 8));
-            } else {
-                y = Math.max(topLimit, (int) hole.top - th - Ui.dp(getContext(), 8));
-            }
-            y = Math.max(topLimit, Math.min(y, bottomLimit - th));
-
-            int x = Math.round(hole.left);
-            if (x + tw > screenW - margin) {
-                x = screenW - margin - tw;
-            }
-            if (x < margin) {
-                x = margin;
-            }
-
-            tip.setX(x);
-            tip.setY(y);
-            tip.setAlpha(0f);
-            tip.setVisibility(VISIBLE);
-            tip.animate().alpha(1f).setDuration(110).start();
-            skipBar.setVisibility(VISIBLE);
-            shownThisStep = true;
-            AppLog.i("GUIDE", "显示第 " + (index + 1) + "/" + steps.size() + " 步：" + step.title);
-        } catch (Exception e) {
-            AppLog.e("GUIDE", "引导步骤显示异常，自动结束", e);
-            finish();
-        }
-    }
-
+    /** 正常结束（看完或主动跳过）：记录「已看过」 */
     public void finish() {
+        end(true);
+    }
+
+    /**
+     * 被打断（切后台、页面重建）：不记录「已看过」，下次进入还会再显示。
+     * 这是旧版最大的 bug —— 旧版在 onPause 里调 finish()，导致引导一旦被打断就永久消失。
+     */
+    public void abort() {
+        end(false);
+    }
+
+    private void end(boolean completed) {
         if (finished) {
             return;
         }
         finished = true;
+        cancelPending();
+        removeLayoutListener();
         if (callback != null) {
-            callback.onFinish();
+            callback.onFinish(completed);
         }
-        // 淡出后再移除，不要“啪”一下消失
         final ViewGroup parent = getParent() instanceof ViewGroup ? (ViewGroup) getParent() : null;
-        animate().alpha(0f).setDuration(160).withEndAction(new Runnable() {
+        animate().alpha(0f).setDuration(140).withEndAction(new Runnable() {
             @Override
             public void run() {
                 if (parent != null) {
@@ -361,59 +519,31 @@ public class GuideOverlay extends FrameLayout {
         }).start();
     }
 
-    private LinearLayout buildTip() {
-        Context c = getContext();
-        LinearLayout box = new LinearLayout(c);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setBackgroundResource(R.drawable.px_panel);
-        int p = Ui.dp(c, 14);
-        box.setPadding(p, p, p, p);
-
-        TextView title = new TextView(c);
-        title.setTextColor(c.getColor(R.color.brand));
-        Ui.pixel(title);
-        title.setTextSize(13);
-        box.addView(title);
-
-        TextView desc = new TextView(c);
-        desc.setTextColor(c.getColor(R.color.ink_secondary));
-        Ui.pixel(desc);
-        desc.setTextSize(10);
-        desc.setLineSpacing(Ui.dp(c, 4), 1f);
-        LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        dlp.topMargin = Ui.dp(c, 8);
-        desc.setLayoutParams(dlp);
-        box.addView(desc);
-
-        LinearLayout row = new LinearLayout(c);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.END);
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        rlp.topMargin = Ui.dp(c, 12);
-        row.setLayoutParams(rlp);
-
-        TextView next = new TextView(c);
-        next.setTextSize(11);
-        next.setTextColor(c.getColor(R.color.white));
-        Ui.pixel(next);
-        next.setBackgroundResource(R.drawable.px_button);
-        next.setPadding(Ui.dp(c, 18), Ui.dp(c, 12), Ui.dp(c, 18), Ui.dp(c, 12));
-        next.setMinHeight(Ui.dp(c, 44));
-        next.setMinWidth(Ui.dp(c, 96));
-        next.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                nextStep();
-            }
-        });
-        row.addView(next);
-        box.addView(row);
-        return box;
+    private void cancelPending() {
+        if (pendingShow != null) {
+            removeCallbacks(pendingShow);
+            pendingShow = null;
+        }
     }
 
-    /** 兼容旧代码占位（未使用） */
-    interface OnPrepareChain {
+    private void removeLayoutListener() {
+        if (layoutListener != null) {
+            View target = steps.size() > index ? steps.get(index).target : null;
+            if (target != null) {
+                ViewTreeObserver vto = target.getViewTreeObserver();
+                if (vto.isAlive()) {
+                    vto.removeOnGlobalLayoutListener(layoutListener);
+                }
+            }
+            layoutListener = null;
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        // 被移出窗口时一定要清理，否则残留的监听会让下次引导卡住
+        cancelPending();
+        removeLayoutListener();
     }
 }

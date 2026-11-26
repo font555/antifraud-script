@@ -66,6 +66,15 @@ public class ScriptsTabView extends FrameLayout {
     private LinearLayout listBox;
     private View plusButton;
 
+    /** 分类筛选那一整块（可折叠） */
+    private FlowLayout chipRow;
+    /** 分类下方的折叠箭头 */
+    private TriangleView collapseArrow;
+    /** 折叠区域里的「收起分类 / 展开分类」文字 */
+    private TextView collapseLabel;
+    /** 分类筛选是否已折叠 */
+    private boolean chipsCollapsed = false;
+
     /** 当前搜索词（已 trim，转小写后匹配） */
     private String query = "";
     /** 当前筛选分类 id；null = 全部 */
@@ -104,6 +113,7 @@ public class ScriptsTabView extends FrameLayout {
 
         buildSearchBox(header);
         buildChipRow(header);
+        buildCollapseToggle(header);
 
         LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -214,7 +224,7 @@ public class ScriptsTabView extends FrameLayout {
     private void buildChipRow(LinearLayout header) {
         // 原来是 HorizontalScrollView + 一行排开，2.1 倍字号下只能看到两个分类，
         // 剩下的必须手动往右划。改成 FlowLayout 后自动换成 2-3 行，全部可见。
-        FlowLayout chipRow = new FlowLayout(activity);
+        chipRow = new FlowLayout(activity);
         chipRow.setGaps(SettingsStore.scaleBox(activity, Ui.dp(activity, 8)),
                 SettingsStore.scaleBox(activity, Ui.dp(activity, 8)));
 
@@ -238,6 +248,73 @@ public class ScriptsTabView extends FrameLayout {
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.rightMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 8));
         return lp;
+    }
+
+    /**
+     * 分类下方的折叠条：居中的小三角 + 「收起分类」。
+     * 点一下把分类块收起来，列表就能多显示几本剧本；再点一下展开。
+     */
+    private void buildCollapseToggle(LinearLayout header) {
+        LinearLayout bar = new LinearLayout(activity);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER);
+        bar.setClickable(true);
+        bar.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, android.view.MotionEvent e) {
+                if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) {
+                    v.setAlpha(0.55f);
+                } else if (e.getActionMasked() == android.view.MotionEvent.ACTION_UP
+                        || e.getActionMasked() == android.view.MotionEvent.ACTION_CANCEL) {
+                    v.setAlpha(1f);
+                }
+                return false;
+            }
+        });
+
+        int arrowW = SettingsStore.scaleBox(activity, Ui.dp(activity, 26));
+        int arrowH = SettingsStore.scaleBox(activity, Ui.dp(activity, 12));
+        collapseArrow = new TriangleView(activity);
+        collapseArrow.setArrowColor(activity.getColor(R.color.ink_hint));
+        bar.addView(collapseArrow, new LinearLayout.LayoutParams(arrowW, arrowH));
+
+        collapseLabel = Ui.text(activity, "收起分类", 9, R.color.ink_hint);
+        collapseLabel.setPadding(SettingsStore.scaleBox(activity, Ui.dp(activity, 4)), 0, 0, 0);
+        bar.addView(collapseLabel);
+
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                SettingsStore.scaleBox(activity, Ui.dp(activity, 30)));
+        blp.bottomMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 2));
+        bar.setLayoutParams(blp);
+        bar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                setChipsCollapsed(!chipsCollapsed);
+            }
+        });
+        header.addView(bar);
+    }
+
+    /** 折叠 / 展开分类筛选区。折叠时箭头朝下，提示"点我可以展开" */
+    private void setChipsCollapsed(boolean collapsed) {
+        chipsCollapsed = collapsed;
+        if (chipRow != null) {
+            chipRow.setVisibility(collapsed ? View.GONE : View.VISIBLE);
+        }
+        if (collapseArrow != null) {
+            collapseArrow.setPointDown(collapsed);
+        }
+        if (collapseLabel != null) {
+            collapseLabel.setText(collapsed ? "展开分类" : "收起分类");
+        }
+    }
+
+    /** 新手引导用：把分类区恢复成展开状态，避免高亮框框到空白 */
+    private void ensureChipsExpanded() {
+        if (chipsCollapsed) {
+            setChipsCollapsed(false);
+        }
     }
 
     /** 一个小筛选块：选中 px_button 白字，未选中 px_option ink 字 */

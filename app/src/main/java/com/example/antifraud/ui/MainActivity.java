@@ -156,7 +156,9 @@ public class MainActivity extends BaseActivity implements TabHost {
     protected void onPause() {
         super.onPause();
         if (guide != null) {
-            guide.finish();
+            // 用 abort 而不是 finish：切后台/锁屏/页面重建不算"看过"，
+            // 下次进来还要再显示（旧版这里用 finish，导致引导经常再也不出现）
+            guide.abort();
             guide = null;
             guideShowing = false;
         }
@@ -165,6 +167,7 @@ public class MainActivity extends BaseActivity implements TabHost {
     @Override
     public void onBackPressed() {
         if (guide != null) {
+            // 返回键关掉引导也算"跳过"，记录一下，避免下次又弹
             guide.finish();
             return;
         }
@@ -291,55 +294,65 @@ public class MainActivity extends BaseActivity implements TabHost {
         }
         guideShowing = true;
         final View content = findViewById(android.R.id.content);
-        content.postDelayed(new Runnable() {
+
+        // 等首页真正画完再挂引导：用布局回调代替固定 900ms 延时，
+        // 既不会"抢在页面之前"导致坐标错，也不会白等近一秒。
+        content.post(new Runnable() {
             @Override
             public void run() {
                 if (isFinishing() || !guideShowing) {
                     return;
                 }
-                final GuideOverlay overlay = new GuideOverlay(MainActivity.this);
-                guide = overlay;
-                // 「跳过引导」放在底部 Tab 栏上方，不压住导航
-                overlay.setBottomInsetDp(64);
-                overlay.setStepPreparer(new GuideOverlay.OnStepPrepare() {
-                    @Override
-                    public void onPrepare(int index) {
-                        // 0/1 在首页；2/3 在剧本页；4 在我的页
-                        if (index == 2 || index == 3) {
-                            switchTab(1);
-                            if (index == 2 && scriptsView != null) {
-                                scriptsView.resetForGuide();
-                            }
-                        } else if (index == 4) {
-                            switchTab(2);
-                        } else {
-                            switchTab(0);
-                        }
-                    }
-                });
-                overlay.addStep(homeView == null ? null : homeView.carouselView(), "每天一个真实案例",
-                        "左右滑动可以看更多；点开能复制原文链接，全部来自公开报道。");
-                overlay.addStep(homeView == null ? null : homeView.shelfView(), "从一本书开始",
-                        "六本书对应六类骗局，点开封面会翻开，翻完直接带你去剧本页。");
-                overlay.addStep(scriptsView == null ? null : scriptsView.listView(), "这里是全部剧本",
-                        "18 本剧本都在这里，上面可以搜索和按骗局类型筛选，点一本就能开始。", 0.55f);
-                overlay.addStep(scriptsView == null ? null : scriptsView.fabButtonView(), "自己也能写剧本",
-                        "点搜索框右边的加号：新建空白、套模板，或者导入同学发来的剧本。");
-                overlay.addStep(mineView == null ? null : mineView.settingsRowView(), "觉得字累眼？",
-                        "这里能换系统字体、调大字号，还有一个藏起来的运行日志。");
-                ((android.view.ViewGroup) content).addView(overlay);
-                overlay.start(new GuideOverlay.OnFinish() {
-                    @Override
-                    public void onFinish() {
-                        SettingsStore.setGuideDone(MainActivity.this);
-                        guideShowing = false;
-                        guide = null;
-                        // 引导结束回到首页，用户第一眼看到的是书架
-                        switchTab(0);
-                        AppLog.i("GUIDE", "引导结束");
-                    }
-                });
+                showGuide(content);
             }
-        }, 900);
+        });
+    }
+
+    private void showGuide(View content) {
+        final GuideOverlay overlay = new GuideOverlay(this);
+        guide = overlay;
+        // 「跳过引导」放在底部 Tab 栏上方，不压住导航
+        overlay.setBottomInsetDp(64);
+        overlay.setStepPreparer(new GuideOverlay.OnStepPrepare() {
+            @Override
+            public void onPrepare(int index) {
+                // 0/1 在首页；2/3 在剧本页；4 在我的页
+                if (index == 2 || index == 3) {
+                    switchTab(1);
+                    if (index == 2 && scriptsView != null) {
+                        scriptsView.resetForGuide();
+                    }
+                } else if (index == 4) {
+                    switchTab(2);
+                } else {
+                    switchTab(0);
+                }
+            }
+        });
+        overlay.addStep(homeView == null ? null : homeView.carouselView(), "每天一个真实案例",
+                "左右滑动可以看更多；点开能复制原文链接，全部来自公开报道。");
+        overlay.addStep(homeView == null ? null : homeView.shelfView(), "从一本书开始",
+                "六本书对应六类骗局，点开封面会翻开，翻完直接带你去剧本页。");
+        overlay.addStep(scriptsView == null ? null : scriptsView.listView(), "这里是全部剧本",
+                "18 本剧本都在这里，上面可以搜索和按骗局类型筛选，点一本就能开始。", 0.55f);
+        overlay.addStep(scriptsView == null ? null : scriptsView.fabButtonView(), "自己也能写剧本",
+                "点搜索框右边的加号：新建空白、套模板，或者导入同学发来的剧本。");
+        overlay.addStep(mineView == null ? null : mineView.settingsRowView(), "觉得字累眼？",
+                "这里能换系统字体、调大字号，还有一个藏起来的运行日志。");
+
+        ((android.view.ViewGroup) content).addView(overlay);
+        overlay.start(new GuideOverlay.OnFinish() {
+            @Override
+            public void onFinish(boolean completed) {
+                // 只有"看完"或"主动跳过"才记录；被打断下次还会显示
+                if (completed) {
+                    SettingsStore.setGuideDone(MainActivity.this);
+                }
+                guideShowing = false;
+                guide = null;
+                switchTab(0);
+                AppLog.i("GUIDE", completed ? "引导结束（已记录）" : "引导中断（下次再显示）");
+            }
+        });
     }
 }
