@@ -11,6 +11,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.antifraud.R;
+import com.example.antifraud.engine.SettingsStore;
 import com.example.antifraud.engine.AppLog;
 import com.example.antifraud.engine.UserStore;
 
@@ -64,15 +65,17 @@ public class RegisterActivity extends BaseActivity {
             // 外层容器负责"选中"高亮，里面是像素头像
             LinearLayout box = new LinearLayout(this);
             box.setGravity(Gravity.CENTER);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 52), 1f);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, SettingsStore.scaleBox(this, Ui.dp(this, 52)), 1f);
             lp.setMargins(Ui.dp(this, 3), 0, Ui.dp(this, 3), 0);
             box.setLayoutParams(lp);
-            box.setPadding(Ui.dp(this, 3), Ui.dp(this, 3), Ui.dp(this, 3), Ui.dp(this, 3));
+            int bp = SettingsStore.scaleBox(this, Ui.dp(this, 3));
+            box.setPadding(bp, bp, bp, bp);
             box.setBackgroundResource(idx == selected ? R.drawable.px_button : R.drawable.px_paper);
 
             AvatarView av = new AvatarView(this);
             av.setAvatar(avatarColor(idx), idx);
-            box.addView(av, new LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)));
+            int avSize = SettingsStore.scaleBox(this, Ui.dp(this, 40));
+            box.addView(av, new LinearLayout.LayoutParams(avSize, avSize));
 
             box.setOnClickListener(new View.OnClickListener() {
                 @Override

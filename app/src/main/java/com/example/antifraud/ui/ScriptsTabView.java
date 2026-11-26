@@ -28,6 +28,7 @@ import android.widget.TextView;
 import com.example.antifraud.R;
 import com.example.antifraud.engine.ScriptRepository;
 import com.example.antifraud.engine.ScriptStore;
+import com.example.antifraud.engine.SettingsStore;
 import com.example.antifraud.model.Category;
 import com.example.antifraud.model.Choice;
 import com.example.antifraud.model.Script;
@@ -44,7 +45,8 @@ import java.util.Map;
  *
  * <p>全部界面用代码搭，不新增 XML 布局也不新增 drawable：卡片底色复用 px_panel，
  * 分类色条和圆形 FAB 用 Canvas 自绘。零第三方依赖、不联网、不申请任何权限。
- * 三种字号（含「超大」1.55 倍）下，搜索框 / chips / 卡片标题都只占一行，不会溢出。</p>
+ * 四档字号（标准 1.0 / 大 1.3 / 特大 1.7 / 超大 2.1）下，搜索框 / chips / 卡片标题都只占一行，
+ * 不会溢出：搜索框、加号、chips 和卡片的内边距都走 SettingsStore.scaleBox 跟着字号放大。</p>
  */
 public class ScriptsTabView extends FrameLayout {
 
@@ -96,7 +98,9 @@ public class ScriptsTabView extends FrameLayout {
 
         LinearLayout header = new LinearLayout(activity);
         header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(Ui.dp(activity, 14), 0, Ui.dp(activity, 14), 0);
+        // 和下面列表的左右留白保持一致（都走 scaleBox），大字号下搜索框与卡片不会错位
+        int headerPadH = SettingsStore.scaleBox(activity, Ui.dp(activity, 14));
+        header.setPadding(headerPadH, 0, headerPadH, 0);
 
         buildSearchBox(header);
         buildChipRow(header);
@@ -109,8 +113,10 @@ public class ScriptsTabView extends FrameLayout {
         scrollView.setVerticalScrollBarEnabled(false);
         scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         // 加号在列表上方的搜索行里，不再悬浮在列表上：列表底部不需要任何留白
-        scrollView.setPadding(Ui.dp(activity, 14), Ui.dp(activity, 8),
-                Ui.dp(activity, 14), Ui.dp(activity, 10));
+        scrollView.setPadding(SettingsStore.scaleBox(activity, Ui.dp(activity, 14)),
+                SettingsStore.scaleBox(activity, Ui.dp(activity, 8)),
+                SettingsStore.scaleBox(activity, Ui.dp(activity, 14)),
+                SettingsStore.scaleBox(activity, Ui.dp(activity, 10)));
 
         listBox = new LinearLayout(activity);
         listBox.setOrientation(LinearLayout.VERTICAL);
@@ -158,8 +164,11 @@ public class ScriptsTabView extends FrameLayout {
         etSearch.setTextColor(activity.getColor(R.color.ink));
         etSearch.setHintTextColor(activity.getColor(R.color.ink_hint));
         etSearch.setBackgroundResource(R.drawable.px_input);
-        etSearch.setPadding(Ui.dp(activity, 12), Ui.dp(activity, 9),
-                Ui.dp(activity, 12), Ui.dp(activity, 9));
+        // 输入框的内边距和最小高度跟着字号放大：2.1 倍时 12sp 的字不会被上下裁掉
+        int searchPadH = SettingsStore.scaleBox(activity, Ui.dp(activity, 12));
+        int searchPadV = SettingsStore.scaleBox(activity, Ui.dp(activity, 9));
+        etSearch.setPadding(searchPadH, searchPadV, searchPadH, searchPadV);
+        etSearch.setMinHeight(SettingsStore.scaleBox(activity, Ui.dp(activity, 44)));
         etSearch.setInputType(InputType.TYPE_CLASS_TEXT);
         etSearch.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         etSearch.addTextChangedListener(new TextWatcher() {
@@ -189,14 +198,15 @@ public class ScriptsTabView extends FrameLayout {
         searchRow.addView(etSearch, searchLp);
 
         plusButton = buildPlusButton();
-        LinearLayout.LayoutParams plusLp = new LinearLayout.LayoutParams(
-                Ui.dp(activity, 44), Ui.dp(activity, 44));
-        plusLp.leftMargin = Ui.dp(activity, 8);
+        // 圆形加号按钮要装下放大后的「＋」，整体跟着字号长
+        int plusSize = SettingsStore.scaleBox(activity, Ui.dp(activity, 44));
+        LinearLayout.LayoutParams plusLp = new LinearLayout.LayoutParams(plusSize, plusSize);
+        plusLp.leftMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 8));
         searchRow.addView(plusButton, plusLp);
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = Ui.dp(activity, 12);
+        lp.topMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 12));
         header.addView(searchRow, lp);
     }
 
@@ -222,15 +232,15 @@ public class ScriptsTabView extends FrameLayout {
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = Ui.dp(activity, 8);
-        lp.bottomMargin = Ui.dp(activity, 6);
+        lp.topMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 8));
+        lp.bottomMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 6));
         header.addView(hsv, lp);
     }
 
     private LinearLayout.LayoutParams chipLayoutParams() {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.rightMargin = Ui.dp(activity, 8);
+        lp.rightMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 8));
         return lp;
     }
 
@@ -241,9 +251,11 @@ public class ScriptsTabView extends FrameLayout {
         chip.setTextSize(12);
         chip.setGravity(Gravity.CENTER);
         chip.setSingleLine(true);
-        chip.setMinHeight(Ui.dp(activity, 36));
-        chip.setPadding(Ui.dp(activity, 12), Ui.dp(activity, 7),
-                Ui.dp(activity, 12), Ui.dp(activity, 7));
+        // chip 是最典型的「固定高度装文字」：2.1 倍下 12sp 约 25px，44dp 的框才不裁字
+        chip.setMinHeight(SettingsStore.scaleBox(activity, Ui.dp(activity, 44)));
+        int padH = SettingsStore.scaleBox(activity, Ui.dp(activity, 12));
+        int padV = SettingsStore.scaleBox(activity, Ui.dp(activity, 7));
+        chip.setPadding(padH, padV, padH, padV);
         chip.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -378,11 +390,11 @@ public class ScriptsTabView extends FrameLayout {
         if (filtered.isEmpty()) {
             TextView empty = Ui.text(activity, "没有符合条件的剧本", 12, R.color.ink_hint);
             empty.setGravity(Gravity.CENTER);
-            empty.setPadding(Ui.dp(activity, 20), Ui.dp(activity, 20),
-                    Ui.dp(activity, 20), Ui.dp(activity, 20));
+            int emptyPad = SettingsStore.scaleBox(activity, Ui.dp(activity, 20));
+            empty.setPadding(emptyPad, emptyPad, emptyPad, emptyPad);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.topMargin = Ui.dp(activity, 48);
+            lp.topMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 48));
             listBox.addView(empty, lp);
             return;
         }
@@ -442,13 +454,16 @@ public class ScriptsTabView extends FrameLayout {
         });
         LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        cardLp.bottomMargin = Ui.dp(activity, 10);
+        cardLp.bottomMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 10));
         card.setLayoutParams(cardLp);
 
         LinearLayout body = new LinearLayout(activity);
         body.setOrientation(LinearLayout.VERTICAL);
-        body.setPadding(Ui.dp(activity, 20), Ui.dp(activity, 12),
-                Ui.dp(activity, 14), Ui.dp(activity, 12));
+        // 卡片内边距跟着字号放大：左边多留一点，给放大的分类色条让位
+        body.setPadding(SettingsStore.scaleBox(activity, Ui.dp(activity, 20)),
+                SettingsStore.scaleBox(activity, Ui.dp(activity, 12)),
+                SettingsStore.scaleBox(activity, Ui.dp(activity, 14)),
+                SettingsStore.scaleBox(activity, Ui.dp(activity, 12)));
         card.addView(body, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
 
@@ -468,15 +483,17 @@ public class ScriptsTabView extends FrameLayout {
         if (ScriptStore.isUserScript(activity, s.id)) {
             TextView tag = Ui.text(activity, "我写的", 10, R.color.brand);
             tag.setSingleLine(true);
-            tag.setPadding(Ui.dp(activity, 6), Ui.dp(activity, 2),
-                    Ui.dp(activity, 6), Ui.dp(activity, 2));
+            tag.setPadding(SettingsStore.scaleBox(activity, Ui.dp(activity, 6)),
+                    SettingsStore.scaleBox(activity, Ui.dp(activity, 2)),
+                    SettingsStore.scaleBox(activity, Ui.dp(activity, 6)),
+                    SettingsStore.scaleBox(activity, Ui.dp(activity, 2)));
             GradientDrawable tagBg = new GradientDrawable();
             tagBg.setColor(activity.getColor(R.color.brand_soft));
             tagBg.setCornerRadius(Ui.dp(activity, 3));
             tag.setBackground(tagBg);
             LinearLayout.LayoutParams tagLp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            tagLp.leftMargin = Ui.dp(activity, 6);
+            tagLp.leftMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 6));
             titleRow.addView(tag, tagLp);
         }
 
@@ -486,7 +503,7 @@ public class ScriptsTabView extends FrameLayout {
         info.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams infoLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        infoLp.topMargin = Ui.dp(activity, 6);
+        infoLp.topMargin = SettingsStore.scaleBox(activity, Ui.dp(activity, 6));
         body.addView(info, infoLp);
 
         return card;
@@ -524,23 +541,38 @@ public class ScriptsTabView extends FrameLayout {
 
     /** 加号菜单：空白新建 / 套模板 / 导入文件 */
     private void showFloatingMenu() {
-        final String[] items = {"新建空白剧本", "套模板新建", "导入剧本文件"};
-        new AlertDialog.Builder(activity)
-                .setTitle("写一个自己的剧本")
-                .setItems(items, new DialogInterface.OnClickListener() {
+        // 用像素风弹窗，替掉系统 AlertDialog（白底圆角跟整个 App 不搭）
+        final PixelDialog dlg = PixelDialog.create(activity);
+        dlg.title("写一个自己的剧本");
+        dlg.meta("剧本会保存在这台手机上，随时可以再编辑或导出。");
+
+        dlg.item(0xFFE4572E, "新建空白剧本",
+                "从一句开场话术开始，自己写剧情和选项",
+                new PixelDialog.OnAction() {
                     @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        if (which == 0) {
-                            createBlank();
-                        } else if (which == 1) {
-                            chooseTemplate();
-                        } else {
-                            host.openImport();
-                        }
+                    public void onAction(int index) {
+                        createBlank();
                     }
-                })
-                .setNegativeButton("取消", null)
-                .show();
+                }, 0);
+        dlg.item(0xFF3F7FA6, "套模板新建",
+                "选一个骗局类型，自动生成能玩的骨架",
+                new PixelDialog.OnAction() {
+                    @Override
+                    public void onAction(int index) {
+                        chooseTemplate();
+                    }
+                }, 1);
+        dlg.item(0xFF4E7B3A, "导入剧本文件",
+                "打开同学发来的 .json 剧本文件",
+                new PixelDialog.OnAction() {
+                    @Override
+                    public void onAction(int index) {
+                        host.openImport();
+                    }
+                }, 2);
+
+        dlg.button("取消", false, null, 0);
+        dlg.show();
     }
 
     /** 套模板第二步：选一个分类，按这个分类生成骨架 */
@@ -549,20 +581,22 @@ public class ScriptsTabView extends FrameLayout {
             host.toast("分类加载失败，暂时不能套模板");
             return;
         }
-        final String[] names = new String[categories.size()];
+        final PixelDialog dlg = PixelDialog.create(activity);
+        dlg.title("选一个剧本分类");
+        dlg.meta("模板会按这个分类写好开场台词，你只需要往里填内容。");
+        int[] accents = {0xFFC0392B, 0xFFD98C1F, 0xFF3F7FA6, 0xFF6B4C8A, 0xFF4E7B3A, 0xFF3C7A89};
         for (int i = 0; i < categories.size(); i++) {
-            names[i] = categories.get(i).name;
+            final Category cat = categories.get(i);
+            dlg.item(accents[i % accents.length], cat.name, cat.desc,
+                    new PixelDialog.OnAction() {
+                        @Override
+                        public void onAction(int index) {
+                            createFromTemplate(cat);
+                        }
+                    }, i);
         }
-        new AlertDialog.Builder(activity)
-                .setTitle("选一个剧本分类")
-                .setItems(names, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        createFromTemplate(categories.get(which));
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
+        dlg.button("取消", false, null, 0);
+        dlg.show();
     }
 
     /** 新建空白剧本：最小可玩骨架（1 个开场节点 + 2 个选项 + 2 个结局），默认放游戏账号分类 */
@@ -695,7 +729,8 @@ public class ScriptsTabView extends FrameLayout {
             barPaint.setStyle(Paint.Style.FILL);
             barPaint.setColor(barColor);
             insetPx = Ui.dp(c, 2);
-            barWidthPx = Ui.dp(c, 6);
+            // 色条跟着字号一起变粗：2.1 倍下卡片的行高接近两倍，6dp 的细条会显得断开
+            barWidthPx = SettingsStore.scaleBox(c, Ui.dp(c, 6));
         }
 
         @Override

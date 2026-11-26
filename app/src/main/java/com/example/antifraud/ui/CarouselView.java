@@ -26,6 +26,7 @@ import android.widget.Toast;
 
 import com.example.antifraud.R;
 import com.example.antifraud.engine.AppLog;
+import com.example.antifraud.engine.SettingsStore;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -64,6 +65,12 @@ public class CarouselView extends FrameLayout {
     private static final int SWIPE_DISTANCE_DP = 36;
     /** 切换动画时长（毫秒） */
     private static final int SWITCH_DURATION_MS = 280;
+    /**
+     * 卡片内边距/指示点的放大上限。
+     * 卡片高度由 HomeTabView 控制在 1.5 倍以内，内边距再按 1.9 倍长就会挤掉配图；
+     * 文字本身走 sp 自动放大，这里的留白只需要"跟着喘口气"就够。
+     */
+    private static final float BOX_MAX_SCALE = 1.5f;
 
     private final Activity activity;
     /** 卡片层：所有卡片都铺满这里，靠 translationX 做左右切换 */
@@ -123,7 +130,7 @@ public class CarouselView extends FrameLayout {
         LayoutParams dotLp = new LayoutParams(LayoutParams.WRAP_CONTENT,
                 LayoutParams.WRAP_CONTENT);
         dotLp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        dotLp.bottomMargin = Ui.dp(a, 7);
+        dotLp.bottomMargin = vBox(7);
         addView(dotRow, dotLp);
 
         // MainActivity 实现了 TabHost；这里兜底自取一次，HomeTabView 构造后还会显式 setHost
@@ -136,6 +143,24 @@ public class CarouselView extends FrameLayout {
     /** HomeTabView 把 Host 回调传进来（构造参数按约定只有 Activity） */
     public void setHost(TabHost host) {
         this.host = host;
+    }
+
+    /**
+     * 「装文字」的固定尺寸：按字号放大，SettingsStore.scaleBox 内部上限 1.9 倍。
+     * 横向留白（左右内边距、指示点间距）走这个，宽度富余，可以放开长。
+     */
+    private int box(float sizeDp) {
+        return SettingsStore.scaleBox(activity, Ui.dp(activity, sizeDp));
+    }
+
+    /**
+     * 竖直方向的留白：卡片外层高度被 HomeTabView 封顶在 1.5 倍，
+     * 内边距要是按 1.9 倍长，配图和文字就会在卡片里互相挤，所以竖直方向同样封顶 1.5 倍。
+     */
+    private int vBox(float sizeDp) {
+        int base = Ui.dp(activity, sizeDp);
+        int sat = SettingsStore.scaleBox(activity, base);
+        return Math.min(sat, Math.round(base * BOX_MAX_SCALE));
     }
 
     // ---------------- 自动轮播的启动 / 停止 ----------------
@@ -357,34 +382,32 @@ public class CarouselView extends FrameLayout {
         LinearLayout card = new LinearLayout(activity);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setBackgroundResource(R.drawable.px_panel);
-        card.setPadding(Ui.dp(activity, 12), Ui.dp(activity, 9),
-                Ui.dp(activity, 12), Ui.dp(activity, 12));
+        // 左右留白可以放开长；上下留白封顶 1.5 倍，和卡片高度上限保持一致
+        card.setPadding(box(12), vBox(9), box(12), vBox(12));
 
         LinearLayout top = new LinearLayout(activity);
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
         TextView chip = Ui.text(activity, "反诈口诀", 9, R.color.white);
         chip.setBackground(pixelBox(activity.getColor(R.color.brand), true));
-        chip.setPadding(Ui.dp(activity, 6), Ui.dp(activity, 2),
-                Ui.dp(activity, 6), Ui.dp(activity, 2));
+        chip.setPadding(box(6), vBox(2), box(6), vBox(2));
         top.addView(chip);
         View spacer = new View(activity);
         top.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
         TextView badge = Ui.text(activity, "必背", 8, R.color.brand_deep);
         badge.setBackground(pixelBox(activity.getColor(R.color.brand_soft), true));
-        badge.setPadding(Ui.dp(activity, 5), Ui.dp(activity, 2),
-                Ui.dp(activity, 5), Ui.dp(activity, 2));
+        badge.setPadding(box(5), vBox(2), box(5), vBox(2));
         top.addView(badge);
         card.addView(top);
 
         TextView title = Ui.text(activity, "背下 8 个字，记住 8 个动作", 13, R.color.ink);
-        title.setPadding(0, Ui.dp(activity, 6), 0, 0);
+        title.setPadding(0, vBox(6), 0, 0);
         card.addView(title);
 
         for (Tips.Tip t : p.tips) {
             LinearLayout row = new LinearLayout(activity);
             row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(0, Ui.dp(activity, 5), 0, 0);
+            row.setPadding(0, vBox(5), 0, 0);
             TextView key = Ui.text(activity, "「" + t.key + "」" + t.sub, 11, R.color.brand);
             key.setMaxLines(1);
             row.addView(key);
@@ -397,7 +420,7 @@ public class CarouselView extends FrameLayout {
         }
 
         TextView more = Ui.text(activity, "点开看全部 8 句解释 →", 9, R.color.brand_deep);
-        more.setPadding(0, Ui.dp(activity, 7), 0, 0);
+        more.setPadding(0, vBox(7), 0, 0);
         card.addView(more);
 
         // 配图放在文字下方（先看口诀，再看画面）
@@ -430,8 +453,8 @@ public class CarouselView extends FrameLayout {
         LinearLayout card = new LinearLayout(activity);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setBackgroundResource(R.drawable.px_panel);
-        card.setPadding(Ui.dp(activity, 12), Ui.dp(activity, 9),
-                Ui.dp(activity, 12), Ui.dp(activity, 15));
+        // 左右留白放开长；上下留白封顶 1.5 倍（卡片总高被 HomeTabView 限住了）
+        card.setPadding(box(12), vBox(9), box(12), vBox(15));
 
         // 顶行：左侧 tag 像素 chip，右侧「真实案例」角标（品牌红实心 + 白字）
         LinearLayout top = new LinearLayout(activity);
@@ -441,8 +464,7 @@ public class CarouselView extends FrameLayout {
         TextView chip = Ui.text(activity, p.tag.isEmpty() ? "案例" : p.tag, 9,
                 R.color.brand_deep);
         chip.setBackground(pixelBox(activity.getColor(R.color.brand_soft), true));
-        chip.setPadding(Ui.dp(activity, 6), Ui.dp(activity, 2),
-                Ui.dp(activity, 6), Ui.dp(activity, 2));
+        chip.setPadding(box(6), vBox(2), box(6), vBox(2));
         chip.setMaxLines(1);
         chip.setEllipsize(TextUtils.TruncateAt.END);
         top.addView(chip, new LinearLayout.LayoutParams(
@@ -454,8 +476,7 @@ public class CarouselView extends FrameLayout {
 
         TextView badge = Ui.text(activity, "真实案例", 8, R.color.white);
         badge.setBackground(pixelBox(activity.getColor(R.color.brand), true));
-        badge.setPadding(Ui.dp(activity, 5), Ui.dp(activity, 2),
-                Ui.dp(activity, 5), Ui.dp(activity, 2));
+        badge.setPadding(box(5), vBox(2), box(5), vBox(2));
         badge.setMaxLines(1);
         top.addView(badge, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -463,11 +484,11 @@ public class CarouselView extends FrameLayout {
         card.addView(top, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
-        // 标题：单行，超长省略（1.55× 字号也不换行撑高）
+        // 标题：单行，超长省略（字号再大也不换行撑高卡片）
         TextView title = Ui.text(activity, p.title, 14, R.color.ink);
         title.setMaxLines(1);
         title.setEllipsize(TextUtils.TruncateAt.END);
-        title.setPadding(0, Ui.dp(activity, 6), 0, 0);
+        title.setPadding(0, vBox(6), 0, 0);
         card.addView(title, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
@@ -476,7 +497,7 @@ public class CarouselView extends FrameLayout {
                 R.color.ink_hint);
         meta.setMaxLines(1);
         meta.setEllipsize(TextUtils.TruncateAt.END);
-        meta.setPadding(0, Ui.dp(activity, 3), 0, 0);
+        meta.setPadding(0, vBox(3), 0, 0);
         card.addView(meta, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
@@ -484,7 +505,7 @@ public class CarouselView extends FrameLayout {
         TextView synopsis = Ui.text(activity, p.synopsis, 10, R.color.ink_secondary);
         synopsis.setMaxLines(1);
         synopsis.setEllipsize(TextUtils.TruncateAt.END);
-        synopsis.setPadding(0, Ui.dp(activity, 3), 0, 0);
+        synopsis.setPadding(0, vBox(3), 0, 0);
         card.addView(synopsis, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
@@ -502,7 +523,8 @@ public class CarouselView extends FrameLayout {
         }
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, coverHeight(imgW, imgH));
-        lp.topMargin = Ui.dp(activity, 8);
+        // 标题与插图的间距：跟着字号走，但同样封顶 1.5 倍，别把配图挤没
+        lp.topMargin = vBox(8);
         card.addView(coverBox(cover), lp);
     }
 
@@ -615,12 +637,14 @@ public class CarouselView extends FrameLayout {
     private void buildDots(int count) {
         dotRow.removeAllViews();
         dots.clear();
+        // 指示点本身是纯装饰（不装文字），只做轻微放大：太小看不见，太大会抢镜
+        int size = vBox(6);
+        int gap = vBox(3);
         for (int i = 0; i < count; i++) {
             View dot = new View(activity);
-            int size = Ui.dp(activity, 6);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-            lp.leftMargin = Ui.dp(activity, 3);
-            lp.rightMargin = Ui.dp(activity, 3);
+            lp.leftMargin = gap;
+            lp.rightMargin = gap;
             dot.setLayoutParams(lp);
             dotRow.addView(dot);
             dots.add(dot);
@@ -776,31 +800,52 @@ public class CarouselView extends FrameLayout {
         final boolean wasRunning = running;
         stop();     // 弹窗期间不自动切卡
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-        builder.setTitle(p.title);
-        builder.setMessage(p.publisher + "\n" + p.date
-                + "\n案情：" + p.synopsis
-                + "\n原文链接：" + p.url
-                + (TextUtils.isEmpty(p.credit) ? "" : "\n配图：" + p.credit));
-        builder.setPositiveButton("复制链接", new DialogInterface.OnClickListener() {
+        // 像素风弹窗：标题 / 来源日期 / 案情 / 原文链接 / 配图说明 分区排版，
+        // 不再用系统 AlertDialog 把所有字段挤成一段话
+        PixelDialog dlg = PixelDialog.create(activity);
+        dlg.title(p.title);
+
+        String metaText = p.publisher;
+        if (!TextUtils.isEmpty(p.date)) {
+            metaText += "　·　" + p.date;
+        }
+        if (!TextUtils.isEmpty(p.tag)) {
+            metaText += "　·　" + p.tag;
+        }
+        dlg.meta(metaText);
+
+        if (!TextUtils.isEmpty(p.synopsis)) {
+            dlg.field("案情", p.synopsis);
+        }
+        if (!TextUtils.isEmpty(p.amount)) {
+            dlg.field("涉案金额", p.amount);
+        }
+        if (!TextUtils.isEmpty(p.url)) {
+            dlg.field("原文链接", p.url);
+        }
+        if (!TextUtils.isEmpty(p.credit)) {
+            dlg.field("配图", p.credit);
+        }
+
+        dlg.button("复制链接", true, new PixelDialog.OnAction() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
+            public void onAction(int i) {
                 copyLink(p.url);
             }
-        });
-        builder.setNeutralButton("全部来源", new DialogInterface.OnClickListener() {
+        }, 0);
+        dlg.button("全部来源", false, new PixelDialog.OnAction() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
+            public void onAction(int i) {
                 if (host != null) {
                     host.openAllSources();
                 } else {
                     Toast.makeText(activity, "来源入口暂不可用", Toast.LENGTH_SHORT).show();
                 }
             }
-        });
-        builder.setNegativeButton("关闭", null);
-        AlertDialog dialog = builder.create();
-        dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+        }, 1);
+        dlg.button("关闭", false, null, 2);
+
+        dlg.setOnDismiss(new DialogInterface.OnDismissListener() {
             @Override
             public void onDismiss(DialogInterface d) {
                 if (wasRunning) {
@@ -808,7 +853,7 @@ public class CarouselView extends FrameLayout {
                 }
             }
         });
-        dialog.show();
+        dlg.show();
     }
 
     /** 复制原文链接到剪贴板：写剪贴板不需要任何权限 */

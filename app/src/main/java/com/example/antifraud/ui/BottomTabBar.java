@@ -10,12 +10,21 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.example.antifraud.R;
+import com.example.antifraud.engine.SettingsStore;
 
 /**
  * 底部三 Tab 自绘导航条（像素风，零依赖）。
  * 图标用 Canvas 画：房子 / 列表 / 人形；选中为品牌红，未选中为灰褐色。
+ *
+ * <p>字号调到「超大」（2.1×）时，导航条只按 1.35 倍封顶放大：
+ * 底部栏是常驻控件，长太胖会把整屏高度吃掉，正文反而看不到。</p>
  */
 public class BottomTabBar extends LinearLayout {
+
+    /** 标准字号下的条高（dp），与 activity_main.xml 的 58dp 对齐 */
+    private static final int BAR_HEIGHT_DP = 58;
+    /** 导航条整体放大上限：超过它底部栏就太占地方了 */
+    private static final float BAR_MAX_SCALE = 1.35f;
 
     public interface OnTabSelected {
         void onTabSelected(int index);
@@ -42,7 +51,19 @@ public class BottomTabBar extends LinearLayout {
         setOrientation(HORIZONTAL);
         setGravity(Gravity.CENTER_VERTICAL);
         setBackgroundColor(c.getColor(R.color.paper));
-        setPadding(0, Ui.dp(c, 4), 0, Ui.dp(c, 4));
+
+        // 整条高度：标准 58dp，随字号放大但封顶 1.35 倍（最高约 78dp）。
+        // XML 里已改成 wrap_content，这里的最小高度负责把条撑开，避免 label 被裁。
+        int barH = scaleBar(c, Ui.dp(c, BAR_HEIGHT_DP));
+        setMinimumHeight(barH);
+
+        // 上下内边距跟着条高一起长一点点，但同样封顶，别让图标被挤扁
+        int verticalPad = scaleBar(c, Ui.dp(c, 4));
+        setPadding(0, verticalPad, 0, verticalPad);
+
+        // 图标 22dp 是像素图的基准尺寸，只轻微放大（1.35 倍封顶后约 30dp）
+        int iconSize = scaleBar(c, Ui.dp(c, 22));
+        int labelGap = scaleBar(c, Ui.dp(c, 3));
 
         for (int i = 0; i < 3; i++) {
             LinearLayout item = new LinearLayout(c);
@@ -53,7 +74,7 @@ public class BottomTabBar extends LinearLayout {
 
             TabIconView icon = new TabIconView(c, i);
             LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(
-                    Ui.dp(c, 22), Ui.dp(c, 22));
+                    iconSize, iconSize);
             icon.setLayoutParams(ilp);
             item.addView(icon);
             icons[i] = icon;
@@ -65,7 +86,7 @@ public class BottomTabBar extends LinearLayout {
             label.setIncludeFontPadding(false);
             LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
                     LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-            tlp.topMargin = Ui.dp(c, 3);
+            tlp.topMargin = labelGap;
             label.setLayoutParams(tlp);
             item.addView(label);
             labels[i] = label;
@@ -86,6 +107,16 @@ public class BottomTabBar extends LinearLayout {
 
     public void setOnTabSelected(OnTabSelected l) {
         listener = l;
+    }
+
+    /**
+     * 底部栏专用放大：先按字号放大（SettingsStore.scaleBox 内部上限 1.9），
+     * 再整体压到 1.35 倍封顶，避免「超大」档把屏幕吃光。
+     */
+    private static int scaleBar(Context c, int sizePx) {
+        int scaled = SettingsStore.scaleBox(c, sizePx);
+        int cap = Math.round(sizePx * BAR_MAX_SCALE);
+        return Math.min(scaled, cap);
     }
 
     public int getSelected() {

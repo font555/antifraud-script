@@ -42,8 +42,10 @@ public class ChatActivity extends BaseActivity {
     private StoryNode current;
     private final PathRecorder recorder = PathRecorder.get();
     private int lastStage = -1;
-    /** 超大字号（1.5 倍及以上）：顶栏只保留必要信息，避免换行和挤压 */
+    /** 超大字号（1.9 倍及以上，对应「超大 2.1」档）：顶栏只保留必要信息，避免换行和挤压 */
     private boolean bigFont;
+    /** 当前字号倍数（启动时读一次，画气泡时用，不用每次都读设置） */
+    private float fontScale = 1f;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private TextView tvTitle;
@@ -67,6 +69,11 @@ public class ChatActivity extends BaseActivity {
         svMessages = findViewById(R.id.sv_messages);
         llMessages = findViewById(R.id.ll_messages);
         llOptions = findViewById(R.id.ll_options);
+
+        // 消息区和选项区的外边距 12dp 也随字号放大，2.1 倍时左右才不会贴着屏幕边缘
+        int outerPadding = SettingsStore.scaleBox(this, Ui.dp(this, 12));
+        llMessages.setPadding(outerPadding, outerPadding, outerPadding, outerPadding);
+        llOptions.setPadding(outerPadding, outerPadding, outerPadding, outerPadding);
 
         String id = getIntent().getStringExtra("script_id");
         script = ScriptRepository.load(this, id);
@@ -101,13 +108,25 @@ public class ChatActivity extends BaseActivity {
 
     /**
      * 顶栏防溢出：标题/金额按字号设置自动收缩，副标题只留幕次，
-     * 右侧账本区固定最小宽度并靠右，1.55 倍「超大」字号下也不会和标题撞在一起。
+     * 右侧账本区固定最小宽度并靠右，2.1 倍「超大」字号下也不会和标题撞在一起。
      */
     private void protectHeader() {
-        float scale = SettingsStore.fontScale(this);
-        bigFont = scale >= 1.5f;
-        // 标题：标准 18sp，特大降一档到 15sp，超大降两档到 12sp（最低 12sp），只显示一行
-        tvTitle.setTextSize(bigFont ? 12f : (scale >= 1.28f ? 15f : 18f));
+        fontScale = SettingsStore.fontScale(this);
+        // 阈值跟着新档位走：1.9 才进「超大」分支（2.1 档），1.5 以上算「特大」（1.7 档）
+        bigFont = fontScale >= 1.9f;
+        boolean hugeFont = fontScale >= 1.5f;
+        // 标题：标准 18sp，大 15sp，特大 14sp，超大 12sp，只显示一行
+        float titleSp;
+        if (bigFont) {
+            titleSp = 12f;
+        } else if (hugeFont) {
+            titleSp = 14f;
+        } else if (fontScale >= 1.28f) {
+            titleSp = 15f;
+        } else {
+            titleSp = 18f;
+        }
+        tvTitle.setTextSize(titleSp);
         tvTitle.setSingleLine(true);
         tvTitle.setMaxLines(1);
         tvTitle.setEllipsize(TextUtils.TruncateAt.END);
@@ -117,14 +136,49 @@ public class ChatActivity extends BaseActivity {
         tvStage.setEllipsize(TextUtils.TruncateAt.END);
 
         // 右侧「已损失 / 重来」：留最小宽度并整体靠右，避免被标题挤压
-        tvLoss.setTextSize(bigFont ? 12f : 14f);
+        tvLoss.setTextSize(bigFont ? 12f : (hugeFont ? 13f : 14f));
         tvLoss.setGravity(Gravity.END);
         View lossBox = (View) tvLoss.getParent();
         if (lossBox != null) {
-            lossBox.setMinimumWidth(Ui.dp(this, 76));
+            lossBox.setMinimumWidth(SettingsStore.scaleBox(this, Ui.dp(this, 76)));
             if (lossBox instanceof LinearLayout) {
                 ((LinearLayout) lossBox).setGravity(Gravity.END);
             }
+        }
+
+        // 顶栏 返回「←」和标题行之间、按钮与账本之间的间距随字号留白
+        View btnExit = findViewById(R.id.btn_exit);
+        if (btnExit != null) {
+            int gap = SettingsStore.scaleBox(this, Ui.dp(this, 10));
+            btnExit.setPadding(0, 0, gap, 0);
+            // 顶栏本体内边距：横向按字号放大；纵向只放 40%，
+            // 顶栏太高会挤掉消息区，一屏看不到两句话
+            View topBar = (View) btnExit.getParent();
+            if (topBar != null) {
+                float vFactor = 1f + (fontScale - 1f) * 0.4f;
+                int hPad = SettingsStore.scaleBox(this, Ui.dp(this, 12));
+                int vTop = Math.round(Ui.dp(this, 14) * vFactor);
+                int vBottom = Math.round(Ui.dp(this, 12) * vFactor);
+                topBar.setPadding(hPad, vTop, hPad, vBottom);
+            }
+        }
+        View btnRestart = findViewById(R.id.btn_restart);
+        if (btnRestart != null) {
+            int left = SettingsStore.scaleBox(this, Ui.dp(this, 8));
+            int right = SettingsStore.scaleBox(this, Ui.dp(this, 4));
+            btnRestart.setPadding(left, 0, right, 0);
+        }
+        // 标题下「第 N 幕」和账本下「重来」的 4dp 上间距，也一起放大
+        int headerGap = SettingsStore.scaleBox(this, Ui.dp(this, 4));
+        if (tvStage.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+            LinearLayout.LayoutParams slp = (LinearLayout.LayoutParams) tvStage.getLayoutParams();
+            slp.topMargin = headerGap;
+            tvStage.setLayoutParams(slp);
+        }
+        if (btnRestart != null && btnRestart.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+            LinearLayout.LayoutParams rlp = (LinearLayout.LayoutParams) btnRestart.getLayoutParams();
+            rlp.topMargin = headerGap;
+            btnRestart.setLayoutParams(rlp);
         }
     }
 
@@ -270,11 +324,14 @@ public class ChatActivity extends BaseActivity {
     private AvatarView makeAvatar(int color, int typeIndex, boolean marginRight) {
         AvatarView av = new AvatarView(this);
         av.setAvatar(color, typeIndex);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(this, 30), Ui.dp(this, 30));
+        // 头像跟着字号一起长大，否则 2.1 倍时头像比气泡小一大截，看着断层
+        int size = SettingsStore.scaleBox(this, Ui.dp(this, 30));
+        int gap = SettingsStore.scaleBox(this, Ui.dp(this, 8));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
         if (marginRight) {
-            lp.rightMargin = Ui.dp(this, 8);
+            lp.rightMargin = gap;
         } else {
-            lp.leftMargin = Ui.dp(this, 8);
+            lp.leftMargin = gap;
         }
         av.setLayoutParams(lp);
         return av;
@@ -292,7 +349,7 @@ public class ChatActivity extends BaseActivity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        rlp.bottomMargin = Ui.dp(this, 8);
+        rlp.bottomMargin = SettingsStore.scaleBox(this, Ui.dp(this, 8));
         row.setLayoutParams(rlp);
 
         row.addView(makeAvatar(colorForSpeaker(speaker), speakerType(speaker), true));
@@ -300,8 +357,9 @@ public class ChatActivity extends BaseActivity {
         LinearLayout bubble = new LinearLayout(this);
         bubble.setOrientation(LinearLayout.VERTICAL);
         bubble.setBackgroundResource(R.drawable.px_bubble_other);
-        int p = Ui.dp(this, 10);
-        bubble.setPadding(p, Ui.dp(this, 6), p, Ui.dp(this, 6));
+        int p = SettingsStore.scaleBox(this, Ui.dp(this, 10));
+        int pv = SettingsStore.scaleBox(this, Ui.dp(this, 6));
+        bubble.setPadding(p, pv, p, pv);
         TextView dots = Ui.text(this, "· · ·", 13, R.color.ink_hint);
         bubble.addView(dots);
         row.addView(bubble);
@@ -322,8 +380,8 @@ public class ChatActivity extends BaseActivity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        rlp.topMargin = Ui.dp(this, 6);
-        rlp.bottomMargin = Ui.dp(this, 12);
+        rlp.topMargin = SettingsStore.scaleBox(this, Ui.dp(this, 6));
+        rlp.bottomMargin = SettingsStore.scaleBox(this, Ui.dp(this, 12));
         row.setLayoutParams(rlp);
 
         View left = new View(this);
@@ -333,7 +391,13 @@ public class ChatActivity extends BaseActivity {
 
         TextView chip = Ui.text(this, "第 " + node.stage + " 幕"
                 + (node.stageName.isEmpty() ? "" : " · " + node.stageName), 9, R.color.ink_hint);
-        chip.setPadding(Ui.dp(this, 10), 0, Ui.dp(this, 10), 0);
+        // 字号放大后幕名会变长，最多两行并限制宽度，别把两侧的细线挤没了
+        chip.setMaxLines(2);
+        chip.setEllipsize(TextUtils.TruncateAt.END);
+        chip.setMaxWidth(Math.max(Ui.dp(this, 72),
+                (int) (getResources().getDisplayMetrics().widthPixels * 0.66f)));
+        int chipPad = SettingsStore.scaleBox(this, Ui.dp(this, 10));
+        chip.setPadding(chipPad, 0, chipPad, 0);
         row.addView(chip);
 
         View right = new View(this);
@@ -344,13 +408,49 @@ public class ChatActivity extends BaseActivity {
         llMessages.addView(row);
     }
 
+    /**
+     * 气泡最大宽度占屏幕的比例。
+     * 字号越大字越宽，固定 0.74 会逼得每行只剩两三个字，所以按档位逐级放宽。
+     */
+    private float bubbleWidthRatio() {
+        if (fontScale >= 1.9f) {
+            // 超大 2.1
+            return 0.86f;
+        }
+        if (fontScale >= 1.5f) {
+            // 特大 1.7
+            return 0.80f;
+        }
+        return 0.74f;
+    }
+
+    /**
+     * 气泡里文字的实际上限宽度（像素）。
+     * 除了按比例放宽，还要扣掉两侧外边距、头像和气泡内边距——
+     * 否则 2.1 倍时「我的消息」的气泡会把自己那侧的头像挤出屏幕。
+     */
+    private int bubbleMaxWidth(int kind) {
+        int width = getResources().getDisplayMetrics().widthPixels;
+        int outer = SettingsStore.scaleBox(this, Ui.dp(this, 12)) * 2;
+        int pad = SettingsStore.scaleBox(this, Ui.dp(this, 10)) * 2;
+        int reserve = outer + pad;
+        if (kind == 0 || kind == 1) {
+            // 一条消息只在一侧有头像
+            reserve += SettingsStore.scaleBox(this, Ui.dp(this, 30))
+                    + SettingsStore.scaleBox(this, Ui.dp(this, 8));
+        }
+        int fit = width - reserve;
+        int cap = (int) (width * bubbleWidthRatio());
+        return Math.max(Ui.dp(this, 60), Math.min(cap, fit));
+    }
+
     /** kind: 0 = 对方，1 = 我，2 = 系统 */
     private void addBubble(String speaker, String text, int kind) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        rlp.bottomMargin = Ui.dp(this, 8);
+        rlp.bottomMargin = SettingsStore.scaleBox(this, Ui.dp(this, 8));
         row.setLayoutParams(rlp);
         if (kind == 0) {
             row.setGravity(Gravity.START);
@@ -362,7 +462,7 @@ public class ChatActivity extends BaseActivity {
 
         LinearLayout bubble = new LinearLayout(this);
         bubble.setOrientation(LinearLayout.VERTICAL);
-        int p = Ui.dp(this, 10);
+        int p = SettingsStore.scaleBox(this, Ui.dp(this, 10));
         bubble.setPadding(p, p, p, p);
         if (kind == 0) {
             bubble.setBackgroundResource(R.drawable.px_bubble_other);
@@ -372,7 +472,7 @@ public class ChatActivity extends BaseActivity {
             bubble.setBackgroundResource(R.drawable.px_bubble_system);
         }
 
-        int maxW = (int) (getResources().getDisplayMetrics().widthPixels * 0.74f);
+        int maxW = bubbleMaxWidth(kind);
 
         if (kind == 0 && speaker != null && !speaker.isEmpty()) {
             TextView name = Ui.text(this, speaker, 11, R.color.ink_hint);
@@ -383,6 +483,7 @@ public class ChatActivity extends BaseActivity {
         TextView body = new TextView(this);
         Ui.pixel(body);
         body.setText(text);
+        // 走 sp，由 BaseActivity 的 fontScale 自动放大，这里绝对不要再乘倍数
         body.setTextSize(kind == 2 ? 12 : 15);
         body.setLineSpacing(Ui.dp(this, 3), 1f);
         body.setMaxWidth(maxW);
@@ -417,11 +518,11 @@ public class ChatActivity extends BaseActivity {
         btn.setTextColor(getColor(R.color.ink));
         btn.setLineSpacing(Ui.dp(this, 3), 1f);
         btn.setBackgroundResource(R.drawable.px_option);
-        int p = Ui.dp(this, 12);
+        int p = SettingsStore.scaleBox(this, Ui.dp(this, 12));
         btn.setPadding(p, p, p, p);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.bottomMargin = Ui.dp(this, 8);
+        lp.bottomMargin = SettingsStore.scaleBox(this, Ui.dp(this, 8));
         btn.setLayoutParams(lp);
         btn.setClickable(true);
         btn.setOnClickListener(new View.OnClickListener() {
@@ -477,13 +578,21 @@ public class ChatActivity extends BaseActivity {
 
     private void addEndingCard(final StoryNode node) {
         LinearLayout card = Ui.card(this, 14, 8);
+        // 卡片里装的是结局标题+建议，内边距和下边距一起跟着字号放大
+        int cp = SettingsStore.scaleBox(this, Ui.dp(this, 14));
+        card.setPadding(cp, cp, cp, cp);
+        if (card.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+            LinearLayout.LayoutParams clp = (LinearLayout.LayoutParams) card.getLayoutParams();
+            clp.bottomMargin = SettingsStore.scaleBox(this, Ui.dp(this, 8));
+            card.setLayoutParams(clp);
+        }
         TextView title = Ui.text(this, node.endingTitle, 17, R.color.ink);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setLineSpacing(Ui.dp(this, 3), 1f);
         card.addView(title);
         if (!node.endingAdvice.isEmpty()) {
             TextView advice = Ui.text(this, node.endingAdvice, 13, R.color.ink_secondary);
-            advice.setPadding(0, Ui.dp(this, 8), 0, 0);
+            advice.setPadding(0, SettingsStore.scaleBox(this, Ui.dp(this, 8)), 0, 0);
             advice.setLineSpacing(Ui.dp(this, 3), 1f);
             card.addView(advice);
         }
@@ -496,7 +605,7 @@ public class ChatActivity extends BaseActivity {
         btn.setTextColor(getColor(R.color.white));
         btn.setGravity(Gravity.CENTER);
         btn.setBackgroundColor(getColor(R.color.brand));
-        int p = Ui.dp(this, 14);
+        int p = SettingsStore.scaleBox(this, Ui.dp(this, 14));
         btn.setPadding(p, p, p, p);
         btn.setClickable(true);
         btn.setOnClickListener(new View.OnClickListener() {
@@ -507,7 +616,7 @@ public class ChatActivity extends BaseActivity {
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = Ui.dp(this, 4);
+        lp.topMargin = SettingsStore.scaleBox(this, Ui.dp(this, 4));
         btn.setLayoutParams(lp);
         llOptions.addView(btn);
     }

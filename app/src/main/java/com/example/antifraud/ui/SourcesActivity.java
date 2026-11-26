@@ -12,6 +12,7 @@ import android.widget.Toast;
 
 import com.example.antifraud.R;
 import com.example.antifraud.engine.ScriptRepository;
+import com.example.antifraud.engine.SettingsStore;
 import com.example.antifraud.model.CaseSource;
 import com.example.antifraud.model.Script;
 
@@ -129,8 +130,9 @@ public class SourcesActivity extends BaseActivity {
                         + o.optString("author", "") + "\n" + source;
                 TextView row = Ui.text(this, line, 11, R.color.ink_secondary);
                 row.setLineSpacing(Ui.dp(this, 3), 1f);
-                row.setPadding(Ui.dp(this, 12), Ui.dp(this, 10),
-                        Ui.dp(this, 12), Ui.dp(this, 10));
+                int padH = SettingsStore.scaleBox(this, Ui.dp(this, 12));
+                int padV = SettingsStore.scaleBox(this, Ui.dp(this, 10));
+                row.setPadding(padH, padV, padH, padV);
                 row.setBackgroundResource(R.drawable.px_panel);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);

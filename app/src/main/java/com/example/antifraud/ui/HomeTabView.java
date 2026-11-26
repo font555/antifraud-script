@@ -14,6 +14,7 @@ import android.widget.TextView;
 import com.example.antifraud.R;
 import com.example.antifraud.engine.AppLog;
 import com.example.antifraud.engine.ScriptRepository;
+import com.example.antifraud.engine.SettingsStore;
 import com.example.antifraud.engine.UserStore;
 import com.example.antifraud.model.Category;
 import com.example.antifraud.model.Script;
@@ -43,6 +44,14 @@ public class HomeTabView extends LinearLayout {
 
     /** 书架每行放几本书 */
     private static final int PER_ROW = 3;
+
+    /** 轮播卡片的基准高度（dp）：标准字号下就是这样 */
+    private static final int CAROUSEL_HEIGHT_DP = 262;
+    /**
+     * 轮播放大上限。轮播占的是首屏最贵的一块位置，
+     * 跟字号一起长到 1.9 倍就会把书架整体挤出首屏，所以封顶 1.5 倍（约 393dp）。
+     */
+    private static final float CAROUSEL_MAX_SCALE = 1.5f;
 
     private final Activity activity;
     /** 由 MainActivity 实现，负责切 Tab / 打开分类（本视图不直接 new Activity） */
@@ -132,7 +141,9 @@ public class HomeTabView extends LinearLayout {
 
         content = new LinearLayout(a);
         content.setOrientation(VERTICAL);
-        content.setPadding(Ui.dp(a, 16), Ui.dp(a, 8), Ui.dp(a, 16), Ui.dp(a, 18));
+        // 左右 16dp 保持不动：横向留白放大会直接吃掉书架每格的宽度（屏宽分 3 份）。
+        // 上下的 8 / 18dp 跟着字号长一点，页面上下不显得局促。
+        content.setPadding(Ui.dp(a, 16), box(8, 1.6f), Ui.dp(a, 16), box(18, 1.6f));
         scrollView.addView(content, new ScrollView.LayoutParams(
                 ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
 
@@ -142,6 +153,27 @@ public class HomeTabView extends LinearLayout {
         buildFooter();
         // 首页只保留「轮播 + 书架」两块；顶部战绩条与底部口诀卡已删除，
         // 之前的房间场景装饰也按反馈删掉了。
+    }
+
+    // ---------------- 尺寸随字号放大 ----------------
+
+    /**
+     * 「装文字」的固定尺寸统一走这里：先按字号放大（SettingsStore.scaleBox 内部上限 1.9 倍），
+     * 再压到给定上限。文字本身走 sp，会被 BaseActivity 的 fontScale 自动放大，不用在这里乘。
+     *
+     * @param sizeDp   标准字号下的尺寸（dp）
+     * @param maxScale 这一个控件允许的最大倍数（例如轮播 1.5、书架 1.9）
+     */
+    private int box(float sizeDp, float maxScale) {
+        int base = Ui.dp(activity, sizeDp);
+        int scaled = SettingsStore.scaleBox(activity, base);
+        int cap = Math.round(base * maxScale);
+        return Math.min(scaled, cap);
+    }
+
+    /** 轮播高度：262dp 起步，封顶 1.5 倍（约 393dp），保证一屏还能看到书架 */
+    private int carouselHeightPx() {
+        return box(CAROUSEL_HEIGHT_DP, CAROUSEL_MAX_SCALE);
     }
 
     // ---------------- 对外刷新 ----------------
@@ -238,9 +270,11 @@ public class HomeTabView extends LinearLayout {
     private void buildCarousel() {
         carousel = new CarouselView(activity);
         carousel.setHost(host);
-        // 高 262dp（2.5:1 配图 + 文字，整页更紧凑），宽度 match_parent；左右 16dp 由 content 的 padding 留出
+        // 基准 262dp（2.5:1 配图 + 文字，整页更紧凑），宽度 match_parent；
+        // 左右 16dp 由 content 的 padding 留出。
+        // 字号变大时高度跟着涨，但封顶 1.5 倍：再高首屏就看不到书架了。
         carousel.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(activity, 262)));
+                LinearLayout.LayoutParams.MATCH_PARENT, carouselHeightPx()));
         content.addView(carousel);
     }
 
@@ -252,17 +286,20 @@ public class HomeTabView extends LinearLayout {
                 "6 类骗局 · 18 本剧本 · 424 个剧情节点 · 73 条可核验来源",
                 10, R.color.ink_hint);
         footer.setGravity(Gravity.CENTER);
-        footer.setPadding(0, Ui.dp(activity, 16), 0, Ui.dp(activity, 6));
+        footer.setPadding(0, SettingsStore.scaleBox(activity, Ui.dp(activity, 16)), 0,
+                SettingsStore.scaleBox(activity, Ui.dp(activity, 6)));
         content.addView(footer);
     }
 
     private void buildShelf() {
         TextView title = Ui.text(activity, "反诈书架", 22, R.color.ink);
-        title.setPadding(0, Ui.dp(activity, 14), 0, 0);
+        title.setPadding(0, SettingsStore.scaleBox(activity, Ui.dp(activity, 14)), 0, 0);
         content.addView(title);
 
         TextView sub = Ui.text(activity, "点开一本书，走进一个真实的骗局", 11, R.color.ink_hint);
-        sub.setPadding(0, Ui.dp(activity, 6), 0, Ui.dp(activity, 8));
+        // 小字在「超大」档会折成两行，上下留白跟着字体一起放大，避免贴住标题
+        sub.setPadding(0, SettingsStore.scaleBox(activity, Ui.dp(activity, 6)), 0,
+                SettingsStore.scaleBox(activity, Ui.dp(activity, 8)));
         content.addView(sub);
 
         shelfBox = new LinearLayout(activity);
@@ -294,9 +331,10 @@ public class HomeTabView extends LinearLayout {
     /** 木板书架隔板（和旧首页一样的样式） */
     private View buildBoard() {
         View board = new View(activity);
+        // 隔板本身是装饰线，高度只轻微放大（1.4 倍封顶），太厚会显得笨重
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, Ui.dp(activity, 9));
-        lp.setMargins(Ui.dp(activity, 2), 0, Ui.dp(activity, 2), Ui.dp(activity, 14));
+                LinearLayout.LayoutParams.MATCH_PARENT, box(9, 1.4f));
+        lp.setMargins(box(2, 1.4f), 0, box(2, 1.4f), box(14, 1.6f));
         board.setLayoutParams(lp);
         board.setBackgroundResource(R.drawable.px_shelf);
         return board;
@@ -309,26 +347,32 @@ public class HomeTabView extends LinearLayout {
         cell.setGravity(Gravity.CENTER_HORIZONTAL);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        lp.setMargins(Ui.dp(activity, 5), 0, Ui.dp(activity, 5), Ui.dp(activity, 2));
+        // 列宽由屏幕分 3 份，横向不能放大，否则三列会撑出屏幕；
+        // 只把「书与书之间」的呼吸空间抬一点，字号变大后不显得挤。
+        lp.setMargins(box(5, 1.15f), 0, box(5, 1.15f), box(2, 1.6f));
         cell.setLayoutParams(lp);
 
         final PixelBookView cover = new PixelBookView(activity);
         cover.setBook(cat.colorInt, cat.name, cat.glyph);
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        clp.bottomMargin = Ui.dp(activity, 2);
+        clp.bottomMargin = box(2, 1.6f);
         cover.setLayoutParams(clp);
         cover.setCameraDistance(getResources().getDisplayMetrics().density * 14000);
         cell.addView(cover);
 
         TextView name = Ui.text(activity, cat.name, 13, R.color.ink);
         name.setGravity(Gravity.CENTER);
-        name.setPadding(0, Ui.dp(activity, 8), 0, 0);
+        // 书架一格只有屏宽 1/3，字放大后分类名会折成两三行：固定最多 2 行 + 省略号，
+        // 保证每格高度一致，不会把下面那排骨书顶得乱七八糟。
+        name.setMaxLines(2);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setPadding(0, SettingsStore.scaleBox(activity, Ui.dp(activity, 8)), 0, 0);
         cell.addView(name);
 
         TextView desc = Ui.text(activity, countOf(cat.id) + " 个剧本", 11, R.color.ink_hint);
         desc.setGravity(Gravity.CENTER);
-        desc.setPadding(0, Ui.dp(activity, 3), 0, 0);
+        desc.setPadding(0, SettingsStore.scaleBox(activity, Ui.dp(activity, 3)), 0, 0);
         cell.addView(desc);
         countViews.put(cat.id, desc);
 

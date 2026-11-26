@@ -15,6 +15,7 @@ import android.widget.Toast;
 
 import com.example.antifraud.R;
 import com.example.antifraud.engine.AppLog;
+import com.example.antifraud.engine.SettingsStore;
 import com.example.antifraud.engine.PathRecorder;
 import com.example.antifraud.engine.ScriptRepository;
 import com.example.antifraud.model.Script;
@@ -123,7 +124,7 @@ public class ReviewActivity extends BaseActivity {
         // 3) 底部按钮
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.VERTICAL);
-        actions.setPadding(0, Ui.dp(this, 8), 0, Ui.dp(this, 24));
+        actions.setPadding(0, Ui.dp(this, 8), 0, SettingsStore.scaleBox(this, Ui.dp(this, 24)));
 
         actions.addView(actionButton("查看真实案例来源", true, new View.OnClickListener() {
             @Override
@@ -153,7 +154,7 @@ public class ReviewActivity extends BaseActivity {
         shareBtn.setText("生成分享海报");
         shareBtn.setTextSize(14);
         shareBtn.setGravity(Gravity.CENTER);
-        int sharePad = Ui.dp(this, 14);
+        int sharePad = SettingsStore.scaleBox(this, Ui.dp(this, 14));
         shareBtn.setPadding(sharePad, sharePad, sharePad, sharePad);
         shareBtn.setTextColor(getColor(R.color.ink));
         shareBtn.setBackgroundResource(R.drawable.px_option);
@@ -223,7 +224,7 @@ public class ReviewActivity extends BaseActivity {
         btn.setText(label);
         btn.setTextSize(17);
         btn.setGravity(Gravity.CENTER);
-        int p = Ui.dp(this, 14);
+        int p = SettingsStore.scaleBox(this, Ui.dp(this, 14));
         btn.setPadding(p, p, p, p);
         btn.setClickable(true);
         if (primary) {

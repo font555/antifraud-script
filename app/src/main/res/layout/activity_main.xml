@@ -19,5 +19,5 @@
     <com.example.antifraud.ui.BottomTabBar
         android:id="@+id/tab_bar"
         android:layout_width="match_parent"
-        android:layout_height="58dp" />
+        android:layout_height="wrap_content" />
 </LinearLayout>

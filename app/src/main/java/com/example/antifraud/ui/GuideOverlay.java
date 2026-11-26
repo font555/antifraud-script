@@ -15,6 +15,7 @@ import android.widget.TextView;
 
 import com.example.antifraud.R;
 import com.example.antifraud.engine.AppLog;
+import com.example.antifraud.engine.SettingsStore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -292,8 +293,12 @@ public class GuideOverlay extends FrameLayout {
                 }
             }
 
-            int cardMaxW = Math.min(screenW - Ui.dp(getContext(), 56),
-                    Ui.dp(getContext(), 330));
+            // 大字号下卡片要更宽，否则文字一直换行、卡片会高到超出屏幕
+            float fs = SettingsStore.fontScale(getContext());
+            int wideDp = fs >= 1.9f ? 420 : (fs >= 1.45f ? 370 : 330);
+            int sideDp = fs >= 1.9f ? 24 : 56;
+            int cardMaxW = Math.min(screenW - Ui.dp(getContext(), sideDp),
+                    Ui.dp(getContext(), wideDp));
             tip.measure(MeasureSpec.makeMeasureSpec(cardMaxW, MeasureSpec.AT_MOST),
                     MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
             int tw = tip.getMeasuredWidth();

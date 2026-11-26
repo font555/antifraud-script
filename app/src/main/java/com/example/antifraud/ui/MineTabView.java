@@ -78,17 +78,19 @@ public class MineTabView extends LinearLayout {
         card.setOrientation(HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
         card.setBackgroundResource(R.drawable.px_panel);
-        int p = Ui.dp(a, 14);
+        int p = SettingsStore.scaleBox(a, Ui.dp(a, 14));
         card.setPadding(p, p, p, p);
 
         tvAvatar = new AvatarView(a);
         tvAvatar.setAvatar(a.getColor(R.color.brand), 0);
-        card.addView(tvAvatar, new LayoutParams(Ui.dp(a, 60), Ui.dp(a, 60)));
+        // 头像是纯方块绘制，跟着字号一起变大才不会在超大字号下显得过小
+        int avatarSize = SettingsStore.scaleBox(a, Ui.dp(a, 60));
+        card.addView(tvAvatar, new LayoutParams(avatarSize, avatarSize));
 
         LinearLayout info = new LinearLayout(a);
         info.setOrientation(VERTICAL);
         LayoutParams infoLp = new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f);
-        infoLp.leftMargin = Ui.dp(a, 12);
+        infoLp.leftMargin = SettingsStore.scaleBox(a, Ui.dp(a, 12));
         info.setLayoutParams(infoLp);
 
         tvNick = oneLine(Ui.text(a, "", 17, R.color.ink));
@@ -118,15 +120,20 @@ public class MineTabView extends LinearLayout {
         cell.setOrientation(VERTICAL);
         cell.setGravity(Gravity.CENTER);
         cell.setBackgroundResource(R.drawable.px_panel_soft);
-        cell.setPadding(Ui.dp(a, 6), Ui.dp(a, 12), Ui.dp(a, 6), Ui.dp(a, 12));
+        // 三格统计：上下内边距跟着字号放大，数字和标签在 2.1 倍下不贴边
+        cell.setPadding(SettingsStore.scaleBox(a, Ui.dp(a, 6)),
+                SettingsStore.scaleBox(a, Ui.dp(a, 12)),
+                SettingsStore.scaleBox(a, Ui.dp(a, 6)),
+                SettingsStore.scaleBox(a, Ui.dp(a, 12)));
         LayoutParams lp = new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f);
         if (index > 0) {
-            lp.leftMargin = Ui.dp(a, 8);
+            lp.leftMargin = SettingsStore.scaleBox(a, Ui.dp(a, 8));
         }
         row.addView(cell, lp);
 
         TextView value = oneLine(Ui.text(a, "", 18, R.color.ink));
         value.setGravity(Gravity.CENTER);
+        // 18sp 在超大档约 38sp，行高要跟着留出来，否则数字会被裁掉上下沿
         cell.addView(value, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
         TextView label = Ui.text(a, STAT_LABELS[index], 10, R.color.ink_hint);
         label.setGravity(Gravity.CENTER);
@@ -143,7 +150,10 @@ public class MineTabView extends LinearLayout {
         card.setOrientation(HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
         card.setBackgroundResource(R.drawable.px_option);
-        card.setPadding(Ui.dp(a, 14), Ui.dp(a, 12), Ui.dp(a, 14), Ui.dp(a, 12));
+        card.setPadding(SettingsStore.scaleBox(a, Ui.dp(a, 14)),
+                SettingsStore.scaleBox(a, Ui.dp(a, 12)),
+                SettingsStore.scaleBox(a, Ui.dp(a, 14)),
+                SettingsStore.scaleBox(a, Ui.dp(a, 12)));
         card.setClickable(true);
 
         tvCreateCount = oneLine(Ui.text(a, "", 12, R.color.ink));
@@ -152,7 +162,7 @@ public class MineTabView extends LinearLayout {
         TextView manage = oneLine(Ui.text(a, "管理 →", 11, R.color.brand));
         manage.setGravity(Gravity.END);
         LayoutParams manageLp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-        manageLp.leftMargin = Ui.dp(a, 8);
+        manageLp.leftMargin = SettingsStore.scaleBox(a, Ui.dp(a, 8));
         manage.setLayoutParams(manageLp);
         card.addView(manage);
 
@@ -234,9 +244,13 @@ public class MineTabView extends LinearLayout {
         row.setOrientation(HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setBackgroundResource(R.drawable.px_panel);
-        row.setPadding(Ui.dp(a, 12), Ui.dp(a, 10), Ui.dp(a, 12), Ui.dp(a, 10));
+        // 设置行：左右/上下内边距跟着字号放大，12sp 标题和 9sp 当前值都不贴边框
+        row.setPadding(SettingsStore.scaleBox(a, Ui.dp(a, 12)),
+                SettingsStore.scaleBox(a, Ui.dp(a, 10)),
+                SettingsStore.scaleBox(a, Ui.dp(a, 12)),
+                SettingsStore.scaleBox(a, Ui.dp(a, 10)));
         LayoutParams lp = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-        lp.bottomMargin = Ui.dp(a, 8);
+        lp.bottomMargin = SettingsStore.scaleBox(a, Ui.dp(a, 8));
         row.setLayoutParams(lp);
 
         TextView name = oneLine(Ui.text(a, title, 12, R.color.ink));
@@ -248,7 +262,7 @@ public class MineTabView extends LinearLayout {
         // 超大字号时限制右侧宽度，宁可省略号也不把左侧标题挤掉
         val.setMaxWidth(Math.round(a.getResources().getDisplayMetrics().widthPixels * 0.6f));
         LayoutParams valLp = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-        valLp.leftMargin = Ui.dp(a, 8);
+        valLp.leftMargin = SettingsStore.scaleBox(a, Ui.dp(a, 8));
         val.setLayoutParams(valLp);
         row.addView(val);
 
@@ -384,15 +398,16 @@ public class MineTabView extends LinearLayout {
 
     private TextView withTop(TextView tv, int topDp) {
         LayoutParams lp = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-        lp.topMargin = Ui.dp(a, topDp);
+        // 两行文字之间的间距也要跟着字号长，超大档下行与行才不会挤在一起
+        lp.topMargin = SettingsStore.scaleBox(a, Ui.dp(a, topDp));
         tv.setLayoutParams(lp);
         return tv;
     }
 
     private void addToPage(LinearLayout page, View v, float topDp, float bottomDp) {
         LayoutParams lp = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
-        lp.topMargin = Ui.dp(a, topDp);
-        lp.bottomMargin = Ui.dp(a, bottomDp);
+        lp.topMargin = SettingsStore.scaleBox(a, Ui.dp(a, topDp));
+        lp.bottomMargin = SettingsStore.scaleBox(a, Ui.dp(a, bottomDp));
         page.addView(v, lp);
     }
 }
